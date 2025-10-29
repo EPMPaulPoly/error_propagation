@@ -81,6 +81,15 @@ def boot_total(centered_residuals, bias_corrected_total, N_pop,n_sample):
     adjusted_total = bias_corrected_total + scaled_residual_sum
     return adjusted_total
 
+def t_stat_ci(confidence:float,samples:pd.DataFrame):
+    mean = samples['error'].mean()
+    se = stats.sem(samples['error'])
+
+    n = len(samples)
+    dof = n-1
+
+    
+
 def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=None,n_it_range:list[int]=None):
     # Load data
     strata = od.obtain_strata()
@@ -93,6 +102,7 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     
     # calcul des résidus
     val_data_check['error'] = val_data_check['y_obs'] - val_data_check['y_pred']
+    val_data_check['error_squared'] = val_data_check['error']**2
     if max_error is not None:
         val_data_check = val_data_check.loc[abs(val_data_check['error'])<max_error]
     n_sample = len(val_data_check)
@@ -102,7 +112,7 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     shap = stats.shapiro(val_data_check['error'])
     skewness = stats.skew(val_data_check['error'])
     # graphiques
-    fig,ax = plt.subplots(nrows=2,ncols=2,figsize=[10,10])
+    fig,ax = plt.subplots(nrows=2,ncols=3,figsize=[10,10])
     # Titre figure
     fig.suptitle(f'Strate: {strat_desc} - n= {n_sample} - N= {n_lots} - Stat = {park_counts}')
     # distribution erreurs
@@ -111,12 +121,15 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     ax[0,0].set_xlabel(f'Obs-pred')
     ax[0,0].set_ylabel(f'Nombre de propriété')
     # diagramme q-q
-    stats.probplot(val_data_check['error'], dist="norm", plot=ax[0,1])
-    ax[0,1].set_title(f'Q-Q - SW= {shap.statistic:.2f} - Skew= {skewness:.2f}')
-    ax[0,1].set_xlabel(f'Quantiles théoriques')
-    ax[0,1].set_ylabel(f'Valeurs observées')
+    stats.probplot(val_data_check['error'], dist="norm", plot=ax[1,0])
+    ax[1,0].set_title(f'Q-Q - SW= {shap.statistic:.2f} - Skew= {skewness:.2f}')
+    ax[1,0].set_xlabel(f'Quantiles théoriques')
+    ax[1,0].set_ylabel(f'Valeurs observées')
     # predit vs residus
-    val_data_check.plot(kind='scatter',x='y_pred',y='error',xlabel='Stationnement prédit',ylabel='Obs-pred',ax=ax[1,0],xlim=xlim,title=f'Prédit vs erreurs - n={n_sample}')
+    val_data_check.plot(kind='scatter',x='y_pred',y='error',xlabel='Stationnement prédit',ylabel='Obs-pred',ax=ax[0,1],xlim=xlim,title=f'Prédit vs erreurs - n={n_sample}')
+
+    # prédit vs résidus au carré
+    val_data_check.plot(kind='scatter',x='y_pred',y='error_squared',xlabel='Stationnement prédit',ylabel='$(Obs-pred)^2$',ax=ax[0,2],xlim=xlim,title=f'Prédit vs erreurs au carré - n={n_sample}')
     print(shap.statistic)
     
     n_iterations = 2000
@@ -124,6 +137,7 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
         iteration_range = 0
 
     bootstrap_return = bootstrap(val_data_check, n_sample,n_lots,park_counts,n_iterations)
+    #ci_normal = stats.t.interval(0.95,)
     # capture histogram artists so legend refers to the correct handle
     n_vals, bins_vals, patches = ax[1,1].hist(bootstrap_return['boot_totals'], bins=10, rwidth=0.8, align='mid')
     hist_patch = patches[0] if len(patches) > 0 else None
