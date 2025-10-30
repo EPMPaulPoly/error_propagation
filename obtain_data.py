@@ -82,6 +82,26 @@ def obtain_parking_estimate_strata(id_strate:int):
         lots_parking_reg =pd.read_sql(lots_parking,con=con1)
         parking_out =lots_parking_reg.iloc[0].values[0]
     return parking_out
+def obtain_parking_distribution_strata (id_strate:int):
+    eng = get_connection()
+    with eng.connect() as con1:
+        lots_query = f''' 
+            SELECT 
+                g_no_lot
+            from association_strates 
+            where id_strate ={id_strate}
+        '''
+        lots = pd.read_sql(lots_query,con=con1)
+        lots_list = lots['g_no_lot'].unique().tolist()
+        lots_parking = f'''
+            SELECT
+                g_no_lot,
+                CEIL(n_places_min)::int as y_pred
+            from inventaire_stationnement
+            where g_no_lot in ('{"','".join(lots_list)}') and methode_estime=2
+        '''
+        lots_parking_reg =pd.read_sql(lots_parking,con=con1)
+    return lots_parking_reg
 
 def get_connection():
     env_data = de.load_dotenv()

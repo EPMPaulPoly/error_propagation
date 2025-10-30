@@ -4,6 +4,7 @@ import scipy.stats as stats
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from types import SimpleNamespace
 def stats_routine():    
     # Load data
     strata = od.obtain_strata()
@@ -69,7 +70,7 @@ def bootstrap(val_data_check:pd.DataFrame,n_sample, n_lots, model_estimate_total
     ci_lower = np.percentile(boot_totals, 2.5)
     ci_upper = np.percentile(boot_totals, 97.5)
     # 95% confidence interval for the total population quantity
-    print(f"95% Confidence Interval for Total Population Quantity: [{ci_lower:.2f}, {ci_upper:.2f}]")
+    print(f"Intervalle d'autoamorçage par percentile (95%) pour estimé du stationnement total: [{ci_lower:.2f}, {ci_upper:.2f}]")
     return {'ci_lower':ci_lower,
             'ci_upper':ci_upper,
             'boot_totals':boot_totals,
@@ -96,7 +97,8 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     val_data = od.obtain_data()
     pop_counts = od.obtain_population_sizes()
     park_counts =od.obtain_parking_estimate_strata(id_strate)
-    
+    all_park = od.obtain_parking_distribution_strata(id_strate)
+    n_iterations = 2000
     # Copie
     val_data_check = val_data.loc[val_data['id_strate']==id_strate].copy()
     
@@ -109,10 +111,13 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     n_lots = pop_counts.loc[pop_counts['id_strate']==id_strate,'popu_strate'].values[0]
     strat_desc = strata.loc[strata['id_strate']==id_strate,'desc_concat'].values[0]
     # statistique shapiro pour normalité
-    shap = stats.shapiro(val_data_check['error'])
+    if len(val_data_check) <= 5000:
+        shap = stats.shapiro(val_data_check['error'])
+    else:
+        shap = SimpleNamespace(statistic=np.nan, pvalue=np.nan)
     skewness = stats.skew(val_data_check['error'])
     # graphiques
-    fig,ax = plt.subplots(nrows=2,ncols=3,figsize=[10,10])
+    fig,ax = plt.subplots(nrows=2,ncols=4,figsize=[10,10])
     # Titre figure
     fig.suptitle(f'Strate: {strat_desc} - n= {n_sample} - N= {n_lots} - Stat = {park_counts}')
     # distribution erreurs
@@ -132,9 +137,9 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     val_data_check.plot(kind='scatter',x='y_pred',y='error_squared',xlabel='Stationnement prédit',ylabel='$(Obs-pred)^2$',ax=ax[0,2],xlim=xlim,title=f'Prédit vs erreurs au carré - n={n_sample}')
     print(shap.statistic)
     
-    n_iterations = 2000
-    if n_it_range is not None:
-        iteration_range = 0
+    val_data_check.plot(kind='scatter',x='y_pred',y='y_obs',ax=ax[0,3])
+    ax[0,3].axline((0, 0), (val_data_check['y_obs'].max(), val_data_check['y_obs'].max()), linewidth=4, color='r')
+    
 
     bootstrap_return = bootstrap(val_data_check, n_sample,n_lots,park_counts,n_iterations)
     #ci_normal = stats.t.interval(0.95,)
@@ -145,11 +150,56 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     line_bias = ax[1,1].axvline(x=bootstrap_return['inv_biais_corrig'], color='cyan', linestyle='--')
     line_ci_l = ax[1,1].axvline(x=bootstrap_return['ci_lower'], color='lime', linestyle='-')
     line_ci_h = ax[1,1].axvline(x=bootstrap_return['ci_upper'], color='red', linestyle='-')
-    ax[1,1].set_title(f'Bootstrap - {n_iterations} iter')
+    ax[1,1].set_title(f'Autoamorçage - {n_iterations} iter - Stationnement total')
     # build handles list skipping None values (in case hist produced no patches)
     handles = [h for h in [hist_patch, line_inv, line_bias, line_ci_l, line_ci_h] if h is not None]
-    labels = ['Bootstrap', f'Inventaire modèle = {park_counts}', f'Inventaire biais-corrigé = {bootstrap_return['inv_biais_corrig']:.2f}', f'IC bas = {bootstrap_return['ci_lower']:.2f}', f'IC haut={bootstrap_return['ci_upper']:.2f}']
+    labels = ['Autoamorçage', f'Inventaire modèle = {park_counts}', f'Inventaire biais-corrigé = {bootstrap_return['inv_biais_corrig']:.2f}', f'IC bas = {bootstrap_return['ci_lower']:.2f}', f'IC haut={bootstrap_return['ci_upper']:.2f}']
     ax[1,1].legend(handles=handles, labels=labels[:len(handles)])
+
+    # plot y_pred distributions with same bins on the remaining subplot (ax[1,2])
+    s1 = val_data_check['y_pred']
+    # try to extract a y_pred series from all_park (works if it's a Series or a DataFrame)
+    if isinstance(all_park, pd.DataFrame):
+        s2 = all_park['y_pred'] if 'y_pred' in all_park.columns else all_park.iloc[:, 0]
+    elif isinstance(all_park, pd.Series):
+        s2 = all_park
+    else:
+        s2 = pd.Series(all_park).squeeze()
+
+    combined_min = min(s1.min(), s2.min())
+    combined_max = max(np.percentile(s1, 90), np.percentile(s2, 90))
+    # guard against zero range
+    if combined_min == combined_max:
+        combined_min -= 0.5
+        combined_max += 0.5
+    bin_edges = np.linspace(combined_min, combined_max, 10 + 1)
+
+    ax[1,2].hist(s1, bins=bin_edges, alpha=0.6, label='Validation', rwidth=0.8,density=True,align='mid')
+    ax[1,2].hist(s2, bins=bin_edges, alpha=0.4, label='Toutes Prédictions', rwidth=0.8,density=True,align='mid')
+    ax[1,2].set_title('Distribution des prédictions')
+    ax[1,2].set_xlabel('Prédiction')
+    ax[1,2].set_ylabel('Fréquence')
+    ax[1,2].legend()
+    
+    
+    if n_it_range is not None:
+        iteration_range = np.linspace(n_it_range[0],n_it_range[1],250)
+        ci_l_it_check = []
+        ci_h_it_check = []
+        for n_its in iteration_range:
+            bootstrap_it = bootstrap(val_data_check,n_sample,n_lots,park_counts,int(n_its))
+            ci_l_it_check.append(bootstrap_it['ci_lower'])
+            ci_h_it_check.append(bootstrap_it['ci_upper'])
+        fig2,ax2 = plt.subplots(figsize=[5,5])
+        ax2.plot(iteration_range,ci_l_it_check,color='blue')
+        ax2.plot(iteration_range,ci_h_it_check,color='red')
+        ax2.set_title(f"Convergence de l'autoamorçage - Strate: {strat_desc} - n= {n_sample} - N= {n_lots} - Stat = {park_counts}")
+        ax2.set_xlabel("Nombre d'itérations")
+        ax2.set_ylabel("Valeur des intervalles de confiance")
+
+
+
+
     #plt.show()
 
 
