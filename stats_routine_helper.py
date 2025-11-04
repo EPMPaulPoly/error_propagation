@@ -114,6 +114,9 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     ## -----------------------------------------------------------
     if max_error is not None:
         val_data_check = val_data_check.loc[abs(val_data_check['error'])<max_error]
+    ## -----------------------------------------------------------
+    # taille échantillon et population et description
+    ## -----------------------------------------------------------
     n_sample = len(val_data_check)
     n_lots = pop_counts.loc[pop_counts['id_strate']==id_strate,'popu_strate'].values[0]
     strat_desc = strata.loc[strata['id_strate']==id_strate,'desc_concat'].values[0]
@@ -125,44 +128,82 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     else:
         shap = SimpleNamespace(statistic=np.nan, pvalue=np.nan)
     skewness = stats.skew(val_data_check['error'])
-    # graphiques
-    fig,ax = plt.subplots(nrows=2,ncols=4,figsize=[10,10])
-    # Titre figure
-    fig.suptitle(f'Strate: {strat_desc} - n= {n_sample} - N= {n_lots} - Stat = {park_counts}')
-    ## -----------------------------------------------------------
-    # distribution erreurs
-    ## -----------------------------------------------------------
-    val_data_check['error'].hist(ax=ax[0,0], bins=bins,rwidth=0.8,grid=False,align='mid')
-    ax[0,0].set_title(f'Distribution des erreurs - n= {n_sample}')
-    ax[0,0].set_xlabel(f'Obs-pred')
-    ax[0,0].set_ylabel(f'Nombre de propriété')
-    # diagramme q-q comparaison à une loi normale
-    stats.probplot(val_data_check['error'], dist="norm", plot=ax[1,0])
-    ax[1,0].set_title(f'Q-Q - SW= {shap.statistic:.2f} - Skew= {skewness:.2f}')
-    ax[1,0].set_xlabel(f'Quantiles théoriques')
-    ax[1,0].set_ylabel(f'Valeurs observées')
-    
-    ## -----------------------------------------------------------
-    # predit vs residus : alternative tukey ou bland altman
-    ## -----------------------------------------------------------
-    val_data_check.plot(kind='scatter',x='y_pred',y='error',xlabel='Stationnement prédit',ylabel='Obs-pred',ax=ax[0,1],xlim=xlim,title=f'Prédit vs erreurs - n={n_sample}')
-    ## -----------------------------------------------------------
-    # prédit vs résidus au carré voir si on peut faire une prédiction sur l'entier positif
-    ## -----------------------------------------------------------
-    val_data_check.plot(kind='scatter',x='y_pred',y='error_squared',xlabel='Stationnement prédit',ylabel='$(Obs-pred)^2$',ax=ax[0,2],xlim=xlim,title=f'Prédit vs erreurs au carré - n={n_sample}')
-    print(shap.statistic)
-    ## -----------------------------------------------------------
-    # prédiv vs obs. devrait être une ligne droite.
-    ## -----------------------------------------------------------
-    val_data_check.plot(kind='scatter',x='y_pred',y='y_obs',ax=ax[0,3])
-    ax[0,3].axline((0, 0), (val_data_check['y_obs'].max(), val_data_check['y_obs'].max()), linewidth=4, color='r')
-
 
     ## -----------------------------------------------------------
     # intervalle d'erreur bootstrap.
     ## -----------------------------------------------------------
     bootstrap_return = bootstrap(val_data_check, n_sample,n_lots,park_counts,n_iterations)
 
+    ## -----------------------------------------------------------
+    # début graphiques
+    ## -----------------------------------------------------------
+    
+    fig,ax = plt.subplots(nrows=2,ncols=4,figsize=[10,10])
+    # Titre figure
+    fig.suptitle(f'Strate: {strat_desc} - n= {n_sample} - N= {n_lots} - Stat = {park_counts}')
+    
+    graphique_distro_erreur(val_data_check,ax,n_sample,bins)
+    graphique_QQ(val_data_check,shap,skewness,ax)
+    graphique_residus(val_data_check,n_sample,ax,xlim)
+    graphique_residus_carre(val_data_check,n_sample,xlim,ax)
+    graphique_bootstrap(bootstrap_return,park_counts,ax,n_iterations)
+    graphique_distro_pred(val_data_check,all_park,ax)
+    graphique_predit_vs_obs(val_data_check,ax)
+    print(shap.statistic)
+    if n_it_range is not None:
+        analyse_sensibilite_iterations_bootstrap(n_it_range,val_data_check,n_sample,n_lots,park_counts,strat_desc)
+        
+
+def graphique_distro_erreur(val_data:pd.DataFrame,ax:plt.axes,n_sample:int,bins:int):
+    ## -----------------------------------------------------------
+    # distribution erreurs
+    ## -----------------------------------------------------------
+    val_data['error'].hist(ax=ax[0,0], bins=bins,rwidth=0.8,grid=False,align='mid')
+    ax[0,0].set_title(f'Distribution des erreurs - n= {n_sample}')
+    ax[0,0].set_xlabel(f'Obs-pred')
+    ax[0,0].set_ylabel(f'Nombre de propriété')
+
+def graphique_QQ(val_data:pd.DataFrame,shap:float,skewness:float,ax:plt.axes):
+    ## -----------------------------------------------------------
+    # diagramme q-q comparaison à une loi normale
+    ## -----------------------------------------------------------
+    stats.probplot(val_data['error'], dist="norm", plot=ax[1,0])
+    ax[1,0].set_title(f'Q-Q - SW= {shap.statistic:.2f} - Skew= {skewness:.2f}')
+    ax[1,0].set_xlabel(f'Quantiles théoriques')
+    ax[1,0].set_ylabel(f'Valeurs observées')
+    #plt.show()
+def graphique_residus(val_data:pd.DataFrame,n_sample:int,ax:plt.axes,xlim:list[int]):
+    ## -----------------------------------------------------------
+    # predit vs residus : alternative tukey ou bland altman
+    ## -----------------------------------------------------------
+    val_data.plot(kind='scatter',x='y_pred',y='error',xlabel='Stationnement prédit',ylabel='Obs-pred',ax=ax[0,1],xlim=xlim,title=f'Prédit vs erreurs - n={n_sample}')
+
+def graphique_residus_carre(val_data:pd.DataFrame,n_sample:int,xlim:list[int],ax:plt.axes):
+    ## -----------------------------------------------------------
+    # prédit vs résidus au carré voir si on peut faire une prédiction sur l'entier positif
+    ## -----------------------------------------------------------
+    val_data.plot(kind='scatter',x='y_pred',y='error_squared',xlabel='Stationnement prédit',ylabel='$(Obs-pred)^2$',ax=ax[0,2],xlim=xlim,title=f'Prédit vs erreurs au carré - n={n_sample}')
+
+def analyse_sensibilite_iterations_bootstrap(n_it_range:list[int],val_data:pd.DataFrame,n_sample:int,n_lots:int,park_counts:int,strat_desc:str):
+    iteration_range = np.linspace(n_it_range[0],n_it_range[1],250)
+    ci_l_it_check = []
+    ci_h_it_check = []
+    for n_its in iteration_range:
+        bootstrap_it = bootstrap(val_data,n_sample,n_lots,park_counts,int(n_its))
+        ci_l_it_check.append(bootstrap_it['ci_lower'])
+        ci_h_it_check.append(bootstrap_it['ci_upper'])
+    fig2,ax2 = plt.subplots(figsize=[5,5])
+    ax2.plot(iteration_range,ci_l_it_check,color='blue')
+    ax2.plot(iteration_range,ci_h_it_check,color='red')
+    ax2.set_title(f"Convergence de l'autoamorçage - Strate: {strat_desc} - n= {n_sample} - N= {n_lots} - Stat = {park_counts}")
+    ax2.set_xlabel("Nombre d'itérations")
+    ax2.set_ylabel("Valeur des intervalles de confiance")
+
+
+def graphique_bootstrap(bootstrap_return,park_counts,ax:plt.axes,n_iterations):
+    ## -----------------------------------------------------------
+    # graphiques de l'intervalle d'erreur bootstrap
+    ## -----------------------------------------------------------
     # capture histogram artists so legend refers to the correct handle
     n_vals, bins_vals, patches = ax[1,1].hist(bootstrap_return['boot_totals'], bins=10, rwidth=0.8, align='mid')
     hist_patch = patches[0] if len(patches) > 0 else None
@@ -176,11 +217,12 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     labels = ['Autoamorçage', f'Inventaire modèle = {park_counts}', f'Inventaire biais-corrigé = {bootstrap_return['inv_biais_corrig']:.2f}', f'IC bas = {bootstrap_return['ci_lower']:.2f}', f'IC haut={bootstrap_return['ci_upper']:.2f}']
     ax[1,1].legend(handles=handles, labels=labels[:len(handles)])
 
+def graphique_distro_pred(val_data,all_park,ax):
     ## -----------------------------------------------------------
     ## comparaison de la distribution des valeurs prédites 
     ## -----------------------------------------------------------
     # plot y_pred distributions with same bins on the remaining subplot (ax[1,2])
-    s1 = val_data_check['y_pred']
+    s1 = val_data['y_pred']
     # try to extract a y_pred series from all_park (works if it's a Series or a DataFrame)
     if isinstance(all_park, pd.DataFrame):
         s2 = all_park['y_pred'] if 'y_pred' in all_park.columns else all_park.iloc[:, 0]
@@ -203,29 +245,10 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     ax[1,2].set_xlabel('Prédiction')
     ax[1,2].set_ylabel('Fréquence')
     ax[1,2].legend()
-    
-    
-    if n_it_range is not None:
-        iteration_range = np.linspace(n_it_range[0],n_it_range[1],250)
-        ci_l_it_check = []
-        ci_h_it_check = []
-        for n_its in iteration_range:
-            bootstrap_it = bootstrap(val_data_check,n_sample,n_lots,park_counts,int(n_its))
-            ci_l_it_check.append(bootstrap_it['ci_lower'])
-            ci_h_it_check.append(bootstrap_it['ci_upper'])
-        fig2,ax2 = plt.subplots(figsize=[5,5])
-        ax2.plot(iteration_range,ci_l_it_check,color='blue')
-        ax2.plot(iteration_range,ci_h_it_check,color='red')
-        ax2.set_title(f"Convergence de l'autoamorçage - Strate: {strat_desc} - n= {n_sample} - N= {n_lots} - Stat = {park_counts}")
-        ax2.set_xlabel("Nombre d'itérations")
-        ax2.set_ylabel("Valeur des intervalles de confiance")
 
-
-
-
-    #plt.show()
-
-
-
-
-
+def graphique_predit_vs_obs(val_data,ax):
+    ## -----------------------------------------------------------
+    # prédiv vs obs. devrait être une ligne droite.
+    ## -----------------------------------------------------------
+    val_data.plot(kind='scatter',x='y_pred',y='y_obs',ax=ax[0,3])
+    ax[0,3].axline((0, 0), (val_data['y_obs'].max(), val_data['y_obs'].max()), linewidth=4, color='r')
