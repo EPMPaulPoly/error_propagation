@@ -109,35 +109,44 @@ def t_stat_ci(confidence:float,samples:pd.DataFrame):
     n = len(samples)
     dof = n-1
 
-    
+def calcule_erreur(val_data:pd.DataFrame)->pd.DataFrame:
+    val_data['error'] = val_data['y_obs'] - val_data['y_pred']
+    return val_data
+
+def calcule_erreur_carre(val_data:pd.DataFrame)->pd.DataFrame:
+    val_data['error_squared'] = val_data['error_squared']**2
+    return val_data
+
+def elimine_donnnees_aberrantes(val_data:pd.DataFrame,max_error:int):
+    donnees_utiles = val_data.loc[abs(val_data['error'])<max_error]
+    donnees_aberrantes = val_data.loc[abs(val_data['error'])>=max_error]
+    return donnees_utiles,donnees_aberrantes
+
+def calcule_erreur_moyenne_absolue(val_data:pd.DataFrame):
+    return np.mean(val_data['error'].abs())
 
 def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=None,n_it_range:list[int]=None):
     # Load data
     strata = od.obtain_strata() # strata titles
-    val_data = od.obtain_data() # observed values
+    val_data = od.obtain_data() # observed values for whole shebang
     pop_counts = od.obtain_population_sizes() # get population sizes from inputs table
-    park_counts =od.obtain_parking_estimate_strata(id_strate) #estime de la population total
+    stat_total_categ =od.obtain_parking_estimate_strata(id_strate) #estime de la population total
     all_park = od.obtain_parking_distribution_strata(id_strate) # get all predictions in sample
     n_iterations = 2000
     # Copie
     val_data_check = val_data.loc[val_data['id_strate']==id_strate].copy()
-    ## -----------------------------------------------------------
-    # calcul des résidus
-    ## -----------------------------------------------------------
-    val_data_check['error'] = val_data_check['y_obs'] - val_data_check['y_pred']
-    ## -----------------------------------------------------------
-    # résidus au carré
-    ## -----------------------------------------------------------
-    val_data_check['error_squared'] = val_data_check['error']**2
+    val_data_check = calcule_erreur(val_data_check)
+    val_data_check = calcule_erreur_carre(val_data_check)
     ## -----------------------------------------------------------
     # Éliminiation optionnel des propriétés aberrantes
     ## -----------------------------------------------------------
     if max_error is not None:
-        val_data_check = val_data_check.loc[abs(val_data_check['error'])<max_error]
+        val_data_check,outliers = elimine_donnnees_aberrantes(val_data_check,max_error)
     ## -----------------------------------------------------------
     # taille échantillon et population et description
     ## -----------------------------------------------------------
     n_sample = len(val_data_check)
+    n_outliers = len(outliers)
     n_lots = pop_counts.loc[pop_counts['id_strate']==id_strate,'popu_strate'].values[0]
     strat_desc = strata.loc[strata['id_strate']==id_strate,'desc_concat'].values[0]
     ## -----------------------------------------------------------
@@ -160,18 +169,18 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     
     fig,ax = plt.subplots(nrows=2,ncols=4,figsize=[10,10])
     # Titre figure
-    fig.suptitle(f'Strate: {strat_desc} - n= {n_sample} - N= {n_lots} - Stat = {park_counts}')
+    fig.suptitle(f'Strate: {strat_desc} - n= {n_sample} - N= {n_lots} - Stat = {stat_total_categ}')
     
     graphique_distro_erreur(val_data_check,ax,n_sample,bins)
     graphique_QQ(val_data_check,shap,skewness,ax)
     graphique_residus(val_data_check,n_sample,ax,xlim)
     graphique_residus_carre(val_data_check,n_sample,xlim,ax)
-    graphique_bootstrap(bootstrap_return,park_counts,ax,n_iterations)
+    graphique_bootstrap(bootstrap_return,stat_total_categ,ax,n_iterations)
     graphique_distro_pred(val_data_check,all_park,ax)
     graphique_predit_vs_obs(val_data_check,ax)
     print(shap.statistic)
     if n_it_range is not None:
-        analyse_sensibilite_iterations_bootstrap(n_it_range,val_data_check,n_sample,n_lots,park_counts,strat_desc)
+        analyse_sensibilite_iterations_bootstrap(n_it_range,val_data_check,n_sample,n_lots,stat_total_categ,strat_desc)
     ax[1,3].axis('off')    
 
 def graphique_distro_erreur(val_data:pd.DataFrame,ax:plt.axes,n_sample:int,bins:int):
