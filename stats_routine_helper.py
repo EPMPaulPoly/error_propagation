@@ -57,7 +57,7 @@ def stats_routine():
     df = pd.DataFrame(results)
     return df
 
-def bootstrap(val_data_check:pd.DataFrame,n_sample, n_lots, model_estimate_total:int,n_iterations:int=1000):
+def bootstrap_totals(val_data_check:pd.DataFrame,n_sample, n_lots, model_estimate_total:int,n_iterations:int=1000):
     # bootstrap 
     mean_residuals = np.mean(val_data_check['error'])
     scaled_mean_residual = mean_residuals * (n_lots/n_sample)
@@ -81,6 +81,26 @@ def boot_total(centered_residuals, bias_corrected_total, N_pop,n_sample):
     scaled_residual_sum = np.sum(resampled_residuals) * (N_pop / n_sample)
     adjusted_total = bias_corrected_total + scaled_residual_sum
     return adjusted_total
+
+def bootstrap_error(val_data_check,n_sample,n_iterations:int=1000):
+    boot_mean = np.zeros(n_iterations)
+    residuals = val_data_check['error']
+    mean_error = np.mean(residuals)
+    for i in range(n_iterations):
+        boot_mean[i] = boot_average_error(residuals, n_sample)
+    # 95% confidence interval for the total population quantity
+    ci_lower = np.percentile(boot_mean, 2.5)
+    ci_upper = np.percentile(boot_mean, 97.5)
+    # 95% confidence interval for the total population quantity
+    print(f"Intervalle de prédiction par autoamorçage par percentile (95%) pour estimé erreur: [{ci_lower:.2f}, {ci_upper:.2f}]")
+    return {'ci_lower':ci_lower,
+            'ci_upper':ci_upper,
+            'error_bootstrap_dis':boot_mean,
+            'erreur_moyenne':mean_error}
+def boot_average_error(residuals,n_sample):
+    resampled_residuals = np.random.choice(residuals, size=n_sample, replace=True)
+    average_error = np.mean(resampled_residuals)
+    return average_error
 
 def t_stat_ci(confidence:float,samples:pd.DataFrame):
     mean = samples['error'].mean()
@@ -132,8 +152,8 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     ## -----------------------------------------------------------
     # intervalle d'erreur bootstrap.
     ## -----------------------------------------------------------
-    bootstrap_return = bootstrap(val_data_check, n_sample,n_lots,park_counts,n_iterations)
-
+    #bootstrap_return = bootstrap_totals(val_data_check, n_sample,n_lots,park_counts,n_iterations)
+    bootstrap_return = bootstrap_error(val_data_check,n_sample,n_iterations)
     ## -----------------------------------------------------------
     # début graphiques
     ## -----------------------------------------------------------
@@ -205,16 +225,16 @@ def graphique_bootstrap(bootstrap_return,park_counts,ax:plt.axes,n_iterations):
     # graphiques de l'intervalle d'erreur bootstrap
     ## -----------------------------------------------------------
     # capture histogram artists so legend refers to the correct handle
-    n_vals, bins_vals, patches = ax[1,1].hist(bootstrap_return['boot_totals'], bins=10, rwidth=0.8, align='mid')
+    n_vals, bins_vals, patches = ax[1,1].hist(bootstrap_return['error_bootstrap_dis'], bins=10, rwidth=0.8, align='mid')
     hist_patch = patches[0] if len(patches) > 0 else None
-    line_inv = ax[1,1].axvline(x=park_counts, color='violet', linestyle='-')
-    line_bias = ax[1,1].axvline(x=bootstrap_return['inv_biais_corrig'], color='cyan', linestyle='--')
+    line_inv = ax[1,1].axvline(x=0, color='violet', linestyle='-')
+    line_bias = ax[1,1].axvline(x=bootstrap_return['erreur_moyenne'], color='cyan', linestyle='--')
     line_ci_l = ax[1,1].axvline(x=bootstrap_return['ci_lower'], color='lime', linestyle='-')
     line_ci_h = ax[1,1].axvline(x=bootstrap_return['ci_upper'], color='red', linestyle='-')
     ax[1,1].set_title(f'Autoamorçage - {n_iterations} iter - Stationnement total')
     # build handles list skipping None values (in case hist produced no patches)
     handles = [h for h in [hist_patch, line_inv, line_bias, line_ci_l, line_ci_h] if h is not None]
-    labels = ['Autoamorçage', f'Inventaire modèle = {park_counts}', f'Inventaire biais-corrigé = {bootstrap_return['inv_biais_corrig']:.2f}', f'IC bas = {bootstrap_return['ci_lower']:.2f}', f'IC haut={bootstrap_return['ci_upper']:.2f}']
+    labels = ['Autoamorçage', f'Erreur=0', f'Erreur Moyenne = {bootstrap_return['erreur_moyenne']:.2f}', f'IC bas = {bootstrap_return['ci_lower']:.2f}', f'IC haut={bootstrap_return['ci_upper']:.2f}']
     ax[1,1].legend(handles=handles, labels=labels[:len(handles)])
 
 def graphique_distro_pred(val_data,all_park,ax):
