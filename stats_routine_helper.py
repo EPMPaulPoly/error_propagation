@@ -141,12 +141,12 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     # Éliminiation optionnel des propriétés aberrantes
     ## -----------------------------------------------------------
     if max_error is not None:
-        val_data_check,outliers = elimine_donnnees_aberrantes(val_data_check,max_error)
+        val_data_check,don_aber = elimine_donnnees_aberrantes(val_data_check,max_error)
     ## -----------------------------------------------------------
     # taille échantillon et population et description
     ## -----------------------------------------------------------
     n_sample = len(val_data_check)
-    n_outliers = len(outliers)
+    n_outliers = len(don_aber)
     n_lots = pop_counts.loc[pop_counts['id_strate']==id_strate,'popu_strate'].values[0]
     strat_desc = strata.loc[strata['id_strate']==id_strate,'desc_concat'].values[0]
     ## -----------------------------------------------------------
