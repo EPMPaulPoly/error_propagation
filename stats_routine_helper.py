@@ -172,7 +172,7 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     print(shap.statistic)
     if n_it_range is not None:
         analyse_sensibilite_iterations_bootstrap(n_it_range,val_data_check,n_sample,n_lots,park_counts,strat_desc)
-        
+    ax[1,3].axis('off')    
 
 def graphique_distro_erreur(val_data:pd.DataFrame,ax:plt.axes,n_sample:int,bins:int):
     ## -----------------------------------------------------------
@@ -180,7 +180,7 @@ def graphique_distro_erreur(val_data:pd.DataFrame,ax:plt.axes,n_sample:int,bins:
     ## -----------------------------------------------------------
     val_data['error'].hist(ax=ax[0,0], bins=bins,rwidth=0.8,grid=False,align='mid')
     ax[0,0].set_title(f'Distribution des erreurs - n= {n_sample}')
-    ax[0,0].set_xlabel(f'Obs-pred')
+    ax[0,0].set_xlabel(f'obs-pred')
     ax[0,0].set_ylabel(f'Nombre de propriété')
 
 def graphique_QQ(val_data:pd.DataFrame,shap:float,skewness:float,ax:plt.axes):
@@ -196,13 +196,13 @@ def graphique_residus(val_data:pd.DataFrame,n_sample:int,ax:plt.axes,xlim:list[i
     ## -----------------------------------------------------------
     # predit vs residus : alternative tukey ou bland altman
     ## -----------------------------------------------------------
-    val_data.plot(kind='scatter',x='y_pred',y='error',xlabel='Stationnement prédit',ylabel='Obs-pred',ax=ax[0,1],xlim=xlim,title=f'Prédit vs erreurs - n={n_sample}')
+    val_data.plot(kind='scatter',x='y_pred',y='error',xlabel='Stationnement prédit',ylabel='obs-pred',ax=ax[0,1],xlim=xlim,title=f'Prédit vs erreurs - n={n_sample}')
 
 def graphique_residus_carre(val_data:pd.DataFrame,n_sample:int,xlim:list[int],ax:plt.axes):
     ## -----------------------------------------------------------
     # prédit vs résidus au carré voir si on peut faire une prédiction sur l'entier positif
     ## -----------------------------------------------------------
-    val_data.plot(kind='scatter',x='y_pred',y='error_squared',xlabel='Stationnement prédit',ylabel='$(Obs-pred)^2$',ax=ax[0,2],xlim=xlim,title=f'Prédit vs erreurs au carré - n={n_sample}')
+    val_data.plot(kind='scatter',x='y_pred',y='error_squared',xlabel='Stationnement prédit',ylabel='$(obs-pred)^2$',ax=ax[0,2],xlim=xlim,title=f'Prédit vs erreurs au carré - n={n_sample}')
 
 def analyse_sensibilite_iterations_bootstrap(n_it_range:list[int],val_data:pd.DataFrame,n_sample:int,n_lots:int,park_counts:int,strat_desc:str):
     iteration_range = np.linspace(n_it_range[0],n_it_range[1],250)
