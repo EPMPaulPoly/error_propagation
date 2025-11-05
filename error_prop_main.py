@@ -16,11 +16,11 @@ if __name__ =="__main__":
     n_it_range= [1000,10000]
     n_it_select = 2000
     srh.single_strata(36,[0,10],5)
-    srh.single_strata(43,[0,20],5)
-    srh.single_strata(44,[0,100],5)
-    srh.single_strata(40,[0,400],5)
-    srh.single_strata(41,[0,400],5)
-    srh.single_strata(39,[0,200],5)
-    srh.single_strata(42,[0,200],5)
-    srh.single_strata(34,[0,400],5)
+    #srh.single_strata(43,[0,20],5)
+    #srh.single_strata(44,[0,100],5)
+    #srh.single_strata(40,[0,400],5)
+    #srh.single_strata(41,[0,400],5)
+    #srh.single_strata(39,[0,200],5)
+    #srh.single_strata(42,[0,200],5)
+    #srh.single_strata(34,[0,400],5)
     plt.show()

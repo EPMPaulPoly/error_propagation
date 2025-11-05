@@ -85,23 +85,38 @@ def boot_total(centered_residuals, bias_corrected_total, N_pop,n_sample):
 
 def bootstrap_error(val_data_check,n_sample,n_iterations:int=1000):
     boot_mean = np.zeros(n_iterations)
+    boot_mae = np.zeros(n_iterations)
     residuals = val_data_check['error']
     mean_error = np.mean(residuals)
+    mae = skm.mean_absolute_error(val_data_check['y_obs'],val_data_check['y_pred'])
     for i in range(n_iterations):
-        boot_mean[i] = boot_average_error(residuals, n_sample)
-    # 95% confidence interval for the total population quantity
-    ci_lower = np.percentile(boot_mean, 2.5)
-    ci_upper = np.percentile(boot_mean, 97.5)
-    # 95% confidence interval for the total population quantity
-    print(f"Intervalle de prédiction par autoamorçage par percentile (95%) pour estimé erreur: [{ci_lower:.2f}, {ci_upper:.2f}]")
-    return {'ci_lower':ci_lower,
-            'ci_upper':ci_upper,
-            'error_bootstrap_dis':boot_mean,
-            'erreur_moyenne':mean_error}
-def boot_average_error(residuals,n_sample):
-    resampled_residuals = np.random.choice(residuals, size=n_sample, replace=True)
-    average_error = np.mean(resampled_residuals)
-    return average_error
+        data = boot_error(val_data_check, n_sample)
+        boot_mean[i] = data['mean_error']
+        boot_mae[i] = data['mae']
+    # 95% prediction interval for the mean error
+    me_pi_lower = np.percentile(boot_mean, 2.5)
+    me_pi_upper = np.percentile(boot_mean, 97.5)
+    print(f"Intervalle de prédiction par autoamorçage par percentile (95%) pour erreur moyenne: [{me_pi_lower:.2f}, {me_pi_upper:.2f}]")
+    # 95% prediction interval for the mean error
+    mae_pi_lower = np.percentile(boot_mae, 2.5)
+    mae_pi_upper = np.percentile(boot_mae, 97.5)
+    print(f"Intervalle de prédiction par autoamorçage par percentile (95%) pour erreur moyenne absolue: [{mae_pi_lower:.2f}, {mae_pi_upper:.2f}]")
+    return {'me_pi_lower':me_pi_lower,
+            'me_pi_upper':me_pi_upper,
+            'me_bootstrap_dis':boot_mean,
+            'me':mean_error,
+            'mae_pi_lower':mae_pi_lower,
+            'mae_pi_upper':mae_pi_upper,
+            'mae_bootstrap_dis':boot_mae,
+            'mae':mae,
+            }
+def boot_error(val_data_check:pd.DataFrame,n_sample):
+    resampled_data = val_data_check.sample(n=n_sample,replace=True)
+
+    average_error = np.mean(resampled_data['error'])
+    mae = skm.mean_absolute_error(val_data_check['y_obs'],val_data_check['y_pred'])
+
+    return {'mean_error':average_error,'mae':mae}
 
 def t_stat_ci(confidence:float,samples:pd.DataFrame):
     mean = samples['error'].mean()
@@ -148,7 +163,7 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     rmse = skm.root_mean_squared_error(val_data_check['y_obs'],val_data_check['y_pred'])
     mae = skm.mean_absolute_error(val_data_check['y_obs'],val_data_check['y_pred'])
     r2_score = skm.r2_score(val_data_check['y_obs'],val_data_check['y_pred'])
-    mape = skm.mean_absolute_percentage_error(val_data_check['y_obs'],val_data_check['y_pred'])
+    #mape = skm.mean_absolute_percentage_error(val_data_check['y_obs'],val_data_check['y_pred'])
     ## -----------------------------------------------------------
     # Éliminiation optionnel des propriétés aberrantes
     ## -----------------------------------------------------------
@@ -184,14 +199,14 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     # Titre figure
     fig.suptitle(f'Strate: {strat_desc} - n= {n_sample} - N= {n_lots} - Stat = {stat_total_categ}')
     
-    graphique_distro_erreur(val_data_check,ax,n_sample,bins)
-    graphique_QQ(val_data_check,shap,skewness,ax)
-    graphique_residus(val_data_check,n_sample,ax,xlim)
-    graphique_residus_carre(val_data_check,n_sample,xlim,ax)
-    graphique_bootstrap(bootstrap_return,ax,n_iterations)
+    graphique_distro_erreur(val_data_check,ax[0,0],n_sample,bins)
+    graphique_QQ(val_data_check,shap,skewness,ax[1,0])
+    graphique_residus(val_data_check,n_sample,ax[0,1],xlim)
+    graphique_residus_carre(val_data_check,n_sample,xlim,ax[0,2])
+    graphique_bootstrap_me(bootstrap_return,ax[1,1],n_iterations)
     graphique_distro_pred(val_data_check,all_park,ax)
     graphique_predit_vs_obs(val_data_check,ax)
-    print_out_in_figure(fig,val_data_check,bootstrap_return,rmse,mae,mape,r2_score)
+    print_out_in_figure(fig,val_data_check,bootstrap_return,rmse,mae,r2_score)
     print(shap.statistic)
     ax[1,3].axis('off')
     
@@ -204,31 +219,31 @@ def graphique_distro_erreur(val_data:pd.DataFrame,ax:plt.axes,n_sample:int,bins:
     ## -----------------------------------------------------------
     # distribution erreurs
     ## -----------------------------------------------------------
-    val_data['error'].hist(ax=ax[0,0], bins=bins,rwidth=0.8,grid=False,align='mid')
-    ax[0,0].set_title(f'Distribution des erreurs - n= {n_sample}')
-    ax[0,0].set_xlabel(f'obs-pred')
-    ax[0,0].set_ylabel(f'Nombre de propriété')
+    val_data['error'].hist(ax=ax, bins=bins,rwidth=0.8,grid=False,align='mid')
+    ax.set_title(f'Distribution des erreurs - n= {n_sample}')
+    ax.set_xlabel(f'obs-pred')
+    ax.set_ylabel(f'Nombre de propriété')
 
 def graphique_QQ(val_data:pd.DataFrame,shap:float,skewness:float,ax:plt.axes):
     ## -----------------------------------------------------------
     # diagramme q-q comparaison à une loi normale
     ## -----------------------------------------------------------
-    stats.probplot(val_data['error'], dist="norm", plot=ax[1,0])
-    ax[1,0].set_title(f'Q-Q - SW= {shap.statistic:.2f} - Skew= {skewness:.2f}')
-    ax[1,0].set_xlabel(f'Quantiles théoriques')
-    ax[1,0].set_ylabel(f'Valeurs observées')
+    stats.probplot(val_data['error'], dist="norm", plot=ax)
+    ax.set_title(f'Q-Q - SW= {shap.statistic:.2f} - Skew= {skewness:.2f}')
+    ax.set_xlabel(f'Quantiles théoriques')
+    ax.set_ylabel(f'Valeurs observées')
     #plt.show()
 def graphique_residus(val_data:pd.DataFrame,n_sample:int,ax:plt.axes,xlim:list[int]):
     ## -----------------------------------------------------------
     # predit vs residus : alternative tukey ou bland altman
     ## -----------------------------------------------------------
-    val_data.plot(kind='scatter',x='y_pred',y='error',xlabel='Stationnement prédit',ylabel='obs-pred',ax=ax[0,1],xlim=xlim,title=f'Prédit vs erreurs - n={n_sample}')
+    val_data.plot(kind='scatter',x='y_pred',y='error',xlabel='Stationnement prédit',ylabel='obs-pred',ax=ax,xlim=xlim,title=f'Prédit vs erreurs - n={n_sample}')
 
 def graphique_residus_carre(val_data:pd.DataFrame,n_sample:int,xlim:list[int],ax:plt.axes):
     ## -----------------------------------------------------------
     # prédit vs résidus au carré voir si on peut faire une prédiction sur l'entier positif
     ## -----------------------------------------------------------
-    val_data.plot(kind='scatter',x='y_pred',y='error_squared',xlabel='Stationnement prédit',ylabel='$(obs-pred)^2$',ax=ax[0,2],xlim=xlim,title=f'Prédit vs erreurs au carré - n={n_sample}')
+    val_data.plot(kind='scatter',x='y_pred',y='error_squared',xlabel='Stationnement prédit',ylabel='$(obs-pred)^2$',ax=ax,xlim=xlim,title=f'Prédit vs erreurs au carré - n={n_sample}')
 
 def analyse_sensibilite_iterations_bootstrap(n_it_range:list[int],val_data:pd.DataFrame,n_sample:int,n_lots:int,park_counts:int,strat_desc:str):
     iteration_range = np.linspace(n_it_range[0],n_it_range[1],250)
@@ -246,22 +261,39 @@ def analyse_sensibilite_iterations_bootstrap(n_it_range:list[int],val_data:pd.Da
     ax2.set_ylabel("Valeur des intervalles de confiance")
 
 
-def graphique_bootstrap(bootstrap_return,ax:plt.axes,n_iterations):
+def graphique_bootstrap_me(bootstrap_return,ax:plt.axes,n_iterations):
     ## -----------------------------------------------------------
     # graphiques de l'intervalle d'erreur bootstrap
     ## -----------------------------------------------------------
     # capture histogram artists so legend refers to the correct handle
-    n_vals, bins_vals, patches = ax[1,1].hist(bootstrap_return['error_bootstrap_dis'], bins=10, rwidth=0.8, align='mid')
+    n_vals, bins_vals, patches = ax.hist(bootstrap_return['me_bootstrap_dis'], bins=10, rwidth=0.8, align='mid')
     hist_patch = patches[0] if len(patches) > 0 else None
-    line_inv = ax[1,1].axvline(x=0, color='violet', linestyle='-')
-    line_bias = ax[1,1].axvline(x=bootstrap_return['erreur_moyenne'], color='cyan', linestyle='--')
-    line_ci_l = ax[1,1].axvline(x=bootstrap_return['ci_lower'], color='lime', linestyle='-')
-    line_ci_h = ax[1,1].axvline(x=bootstrap_return['ci_upper'], color='red', linestyle='-')
-    ax[1,1].set_title(f'Autoamorçage - {n_iterations} iter - Stationnement total')
+    line_inv = ax.axvline(x=0, color='violet', linestyle='-')
+    line_bias = ax.axvline(x=bootstrap_return['me'], color='cyan', linestyle='--')
+    line_ci_l = ax.axvline(x=bootstrap_return['me_pi_lower'], color='lime', linestyle='-')
+    line_ci_h = ax.axvline(x=bootstrap_return['me_pi_upper'], color='red', linestyle='-')
+    ax.set_title(f'Autoamorçage - {n_iterations} iter - Erreur Moyenne')
     # build handles list skipping None values (in case hist produced no patches)
     handles = [h for h in [hist_patch, line_inv, line_bias, line_ci_l, line_ci_h] if h is not None]
-    labels = ['Autoamorçage', f'Erreur=0', f'Erreur Moyenne = {bootstrap_return['erreur_moyenne']:.2f}', f'IC bas = {bootstrap_return['ci_lower']:.2f}', f'IC haut={bootstrap_return['ci_upper']:.2f}']
-    ax[1,1].legend(handles=handles, labels=labels[:len(handles)])
+    labels = ['Autoamorçage', f'Erreur=0', f'Erreur Moyenne = {bootstrap_return['me']:.2f}', f'IP bas = {bootstrap_return['me_pi_lower']:.2f}', f'IP haut={bootstrap_return['me_pi_upper']:.2f}']
+    ax.legend(handles=handles, labels=labels[:len(handles)])
+
+def graphique_bootstrap_mae(bootstrap_return,ax:plt.axes,n_iterations):
+    ## -----------------------------------------------------------
+    # graphiques de l'intervalle d'erreur bootstrap
+    ## -----------------------------------------------------------
+    # capture histogram artists so legend refers to the correct handle
+    n_vals, bins_vals, patches = ax.hist(bootstrap_return['mae_bootstrap_dis'], bins=10, rwidth=0.8, align='mid')
+    hist_patch = patches[0] if len(patches) > 0 else None
+    line_inv = ax.axvline(x=0, color='violet', linestyle='-')
+    line_bias = ax.axvline(x=bootstrap_return['mae'], color='cyan', linestyle='--')
+    line_ci_l = ax.axvline(x=bootstrap_return['mae_pi_lower'], color='lime', linestyle='-')
+    line_ci_h = ax.axvline(x=bootstrap_return['mae_pi_upper'], color='red', linestyle='-')
+    ax.set_title(f'Autoamorçage - {n_iterations} iter - Erreur absolue moyenne')
+    # build handles list skipping None values (in case hist produced no patches)
+    handles = [h for h in [hist_patch, line_inv, line_bias, line_ci_l, line_ci_h] if h is not None]
+    labels = ['Autoamorçage', f'Erreur=0', f'Erreur Moyenne = {bootstrap_return['mae']:.2f}', f'IP bas = {bootstrap_return['mae_pi_lower']:.2f}', f'IP haut={bootstrap_return['mae_pi_upper']:.2f}']
+    ax.legend(handles=handles, labels=labels[:len(handles)])
 
 def graphique_distro_pred(val_data,all_park,ax):
     ## -----------------------------------------------------------
@@ -299,8 +331,8 @@ def graphique_predit_vs_obs(val_data,ax):
     val_data.plot(kind='scatter',x='y_pred',y='y_obs',ax=ax[0,3])
     ax[0,3].axline((0, 0), (val_data['y_obs'].max(), val_data['y_obs'].max()), linewidth=4, color='r')
 
-def print_out_in_figure(fig:plt.figure,val_data,bootstrap_return,rmse,mae,mape,r2_score):
-    fig.text(0.8,0.15,f"""Places/lot obs moy = {np.mean(val_data['y_obs']):.2f}\n Places/lot pred moy = {np.mean(val_data['y_pred']):.2f}\nME = {bootstrap_return['erreur_moyenne']:.2f} places \n RMSE = {rmse:.2f}\n MAE = {mae:.2f}\n MAPE = {mape:.2f}\n $R^2$ = {r2_score:.2f}""")
+def print_out_in_figure(fig:plt.figure,val_data,bootstrap_return,rmse,mae,r2_score):
+    fig.text(0.8,0.15,f"""Places/lot obs moy = {np.mean(val_data['y_obs']):.2f}\n Places/lot pred moy = {np.mean(val_data['y_pred']):.2f}\nME = {bootstrap_return['erreur_moyenne']:.2f} places \n RMSE = {rmse:.2f}\n MAE = {mae:.2f}\n  $R^2$ = {r2_score:.2f}""")
 
 def graphiques_analyse_residus(val_data:pd.DataFrame,sample_input_values:pd.DataFrame,strat_desc:str):
     val_data_joined = val_data.copy().merge(sample_input_values.copy(),on='g_no_lot',how='left')
