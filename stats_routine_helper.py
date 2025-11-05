@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from types import SimpleNamespace
+import sklearn.metrics as skm
 def stats_routine():    
     # Load data
     strata = od.obtain_strata()
@@ -114,7 +115,7 @@ def calcule_erreur(val_data:pd.DataFrame)->pd.DataFrame:
     return val_data
 
 def calcule_erreur_carre(val_data:pd.DataFrame)->pd.DataFrame:
-    val_data['error_squared'] = val_data['error_squared']**2
+    val_data['error_squared'] = val_data['error']**2
     return val_data
 
 def elimine_donnnees_aberrantes(val_data:pd.DataFrame,max_error:int):
@@ -124,6 +125,7 @@ def elimine_donnnees_aberrantes(val_data:pd.DataFrame,max_error:int):
 
 def calcule_erreur_moyenne_absolue(val_data:pd.DataFrame):
     return np.mean(val_data['error'].abs())
+
 
 def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=None,n_it_range:list[int]=None):
     # Load data
@@ -137,16 +139,25 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     val_data_check = val_data.loc[val_data['id_strate']==id_strate].copy()
     val_data_check = calcule_erreur(val_data_check)
     val_data_check = calcule_erreur_carre(val_data_check)
+
+    #-----------------------------------------
+    # statistiques de base)
+    # -------------------------------
+    rmse = skm.root_mean_squared_error(val_data_check['y_obs'],val_data_check['y_pred'])
+    mae = skm.mean_absolute_error(val_data_check['y_obs'],val_data_check['y_pred'])
+    r2_score = skm.r2_score(val_data_check['y_obs'],val_data_check['y_pred'])
+    mape = skm.mean_absolute_percentage_error(val_data_check['y_obs'],val_data_check['y_pred'])
     ## -----------------------------------------------------------
     # Éliminiation optionnel des propriétés aberrantes
     ## -----------------------------------------------------------
     if max_error is not None:
         val_data_check,don_aber = elimine_donnnees_aberrantes(val_data_check,max_error)
+        n_outliers = len(don_aber)
     ## -----------------------------------------------------------
     # taille échantillon et population et description
     ## -----------------------------------------------------------
     n_sample = len(val_data_check)
-    n_outliers = len(don_aber)
+    
     n_lots = pop_counts.loc[pop_counts['id_strate']==id_strate,'popu_strate'].values[0]
     strat_desc = strata.loc[strata['id_strate']==id_strate,'desc_concat'].values[0]
     ## -----------------------------------------------------------
@@ -175,13 +186,16 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     graphique_QQ(val_data_check,shap,skewness,ax)
     graphique_residus(val_data_check,n_sample,ax,xlim)
     graphique_residus_carre(val_data_check,n_sample,xlim,ax)
-    graphique_bootstrap(bootstrap_return,stat_total_categ,ax,n_iterations)
+    graphique_bootstrap(bootstrap_return,ax,n_iterations)
     graphique_distro_pred(val_data_check,all_park,ax)
     graphique_predit_vs_obs(val_data_check,ax)
+    print_out_in_figure(fig,val_data_check,bootstrap_return,rmse,mae,mape,r2_score)
     print(shap.statistic)
+    ax[1,3].axis('off')
+    
     if n_it_range is not None:
         analyse_sensibilite_iterations_bootstrap(n_it_range,val_data_check,n_sample,n_lots,stat_total_categ,strat_desc)
-    ax[1,3].axis('off')    
+    
 
 def graphique_distro_erreur(val_data:pd.DataFrame,ax:plt.axes,n_sample:int,bins:int):
     ## -----------------------------------------------------------
@@ -229,7 +243,7 @@ def analyse_sensibilite_iterations_bootstrap(n_it_range:list[int],val_data:pd.Da
     ax2.set_ylabel("Valeur des intervalles de confiance")
 
 
-def graphique_bootstrap(bootstrap_return,park_counts,ax:plt.axes,n_iterations):
+def graphique_bootstrap(bootstrap_return,ax:plt.axes,n_iterations):
     ## -----------------------------------------------------------
     # graphiques de l'intervalle d'erreur bootstrap
     ## -----------------------------------------------------------
@@ -281,3 +295,9 @@ def graphique_predit_vs_obs(val_data,ax):
     ## -----------------------------------------------------------
     val_data.plot(kind='scatter',x='y_pred',y='y_obs',ax=ax[0,3])
     ax[0,3].axline((0, 0), (val_data['y_obs'].max(), val_data['y_obs'].max()), linewidth=4, color='r')
+
+def print_out_in_figure(fig:plt.figure,val_data,bootstrap_return,rmse,mae,mape,r2_score):
+    fig.text(0.8,0.15,f"""Places/lot obs moy = {np.mean(val_data['y_obs']):.2f}\n Places/lot pred moy = {np.mean(val_data['y_pred']):.2f}\nME = {bootstrap_return['erreur_moyenne']:.2f} places \n RMSE = {rmse:.2f}\n MAE = {mae:.2f}\n MAPE = {mape:.2f}\n $R^2$ = {r2_score:.2f}""")
+
+def residuals_analysis(val_data,id_strate):
+    print('tesst')
