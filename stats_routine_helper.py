@@ -134,6 +134,8 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     pop_counts = od.obtain_population_sizes() # get population sizes from inputs table
     stat_total_categ =od.obtain_parking_estimate_strata(id_strate) #estime de la population total
     all_park = od.obtain_parking_distribution_strata(id_strate) # get all predictions in sample
+    sample_input_values = od.obtain_sample_input_data(id_strate)
+    #population_input_values = od.obtain_population_input_data(id_strate)
     n_iterations = 2000
     # Copie
     val_data_check = val_data.loc[val_data['id_strate']==id_strate].copy()
@@ -195,6 +197,7 @@ def single_strata(id_strate:int,xlim:list[int]=[0,10],bins:int=5,max_error:int=N
     
     if n_it_range is not None:
         analyse_sensibilite_iterations_bootstrap(n_it_range,val_data_check,n_sample,n_lots,stat_total_categ,strat_desc)
+    graphiques_analyse_residus(val_data_check,sample_input_values,strat_desc)
     
 
 def graphique_distro_erreur(val_data:pd.DataFrame,ax:plt.axes,n_sample:int,bins:int):
@@ -299,5 +302,69 @@ def graphique_predit_vs_obs(val_data,ax):
 def print_out_in_figure(fig:plt.figure,val_data,bootstrap_return,rmse,mae,mape,r2_score):
     fig.text(0.8,0.15,f"""Places/lot obs moy = {np.mean(val_data['y_obs']):.2f}\n Places/lot pred moy = {np.mean(val_data['y_pred']):.2f}\nME = {bootstrap_return['erreur_moyenne']:.2f} places \n RMSE = {rmse:.2f}\n MAE = {mae:.2f}\n MAPE = {mape:.2f}\n $R^2$ = {r2_score:.2f}""")
 
-def residuals_analysis(val_data,id_strate):
-    print('tesst')
+def graphiques_analyse_residus(val_data:pd.DataFrame,sample_input_values:pd.DataFrame,strat_desc:str):
+    val_data_joined = val_data.copy().merge(sample_input_values.copy(),on='g_no_lot',how='left')
+    fig,ax = plt.subplots(nrows=2,ncols=5,figsize=[10,5])
+    graph_erreur_vs_aire_plancher(val_data_joined,ax[0,0])
+    graph_erreur_vs_date_constr(val_data_joined,ax[0,1])
+    graph_erreur_vs_distance_parlement(val_data_joined,ax[0,2])
+    graph_erreur_vs_unite_atypiques(val_data_joined,ax[0,3])
+    graph_erreur_vs_y_pred(val_data_joined,ax[0,4])
+    graph_erreur_vs_superf_lot(val_data_joined,ax[1,0])
+    graph_erreur_vs_n_log(val_data_joined,ax[1,1])
+    graph_erreur_vs_val_role(val_data_joined,ax[1,2])
+    graph_erreur_vs_val_m2(val_data_joined,ax[1,3])
+    graph_erreur_vs_y_pred_m2_par_val(val_data_joined,ax[1,4])
+    fig.suptitle(f'Analyse Résidus - {strat_desc}')
+
+def graph_erreur_vs_aire_plancher(val_data:pd.DataFrame,ax:plt.axes):
+    val_data.plot(x='sup_planch_tot',y='error',xlabel='Aire plancher',ylabel='$y_{{obs}}-y_{{pred}}$',kind='scatter',ax=ax)
+
+def graph_erreur_vs_date_constr(val_data:pd.DataFrame,ax:plt.axes):
+    val_data.plot(x='premiere_constr',y='error',xlabel='Date de construction',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax)
+
+def graph_erreur_vs_distance_parlement(val_data:pd.DataFrame,ax:plt.axes):
+    val_data.plot(x='dist_to_parliament',y='error',xlabel='Distance Parlement',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax)
+
+def graph_erreur_vs_superf_lot(val_data:pd.DataFrame,ax:plt.axes):
+    val_data.plot(x='superf_lot',y='error',xlabel='Superficie Lot',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax)
+
+def graph_erreur_vs_n_log(val_data:pd.DataFrame,ax:plt.axes):
+    val_data.plot(x='n_logements_tot',y='error',xlabel='Nombre de logements',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax)
+    n_tot = len(val_data)
+    n_non_null = int(val_data.loc[~val_data['n_logements_tot'].isna()].count().values[0])
+    ax.set_title(f'$n_{{tot}}$ = {n_tot} $n_{{non-na}}$ = {n_non_null}')
+
+def graph_erreur_vs_val_role(val_data:pd.DataFrame,ax:plt.axes):
+    val_data.plot(x='valeur_totale',y='error',xlabel='Valeur au rôle',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax)
+
+def graph_erreur_vs_y_pred(val_data:pd.DataFrame,ax:plt.axes):
+    val_data.plot(x='y_pred',y='error',xlabel='Prédiction',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax)
+
+
+def graph_erreur_vs_val_m2(val_data:pd.DataFrame,ax:plt.axes):
+    val_data_add = val_data.copy()
+    val_data_add['val_m2'] = val_data_add['valeur_totale']/val_data_add['superf_lot']
+    val_data_add.plot(x='val_m2',y='error',xlabel=r'$\frac{\mathrm{\$}}{m^{2}_{\mathrm{lot}}}$',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax)
+
+def graph_erreur_vs_y_pred_m2_par_val(val_data:pd.DataFrame,ax:plt.axes):
+    val_data_add = val_data.copy()
+    val_data_add['predict'] = val_data_add['y_pred']/val_data_add['valeur_totale']*val_data_add['superf_lot']
+    val_data_add.plot(x='predict',y='error',xlabel=r'$\frac{y_{pred}\times m^{2}_{\mathrm{lot}}}{\mathrm{\$}}$',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax)
+def graph_erreur_vs_unite_atypiques(val_data:pd.DataFrame,ax:plt.axes):
+    # Make the boxplot
+    val_data.boxplot(
+        column='error',
+        by='atypical_units',
+        ax=ax,
+        ylabel='$y_{{obs}}-y_{{pred}}$',
+        xlabel='Unités atypiques?'
+    )
+    
+    # Count points per group
+    counts = val_data['atypical_units'].value_counts().sort_index()
+
+    # Replace x-tick labels with counts
+    ax.set_xticklabels([f"{cat}\n(n={counts[cat]})" for cat in counts.index])
+    ax.set_title("")
+

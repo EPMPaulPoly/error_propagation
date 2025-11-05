@@ -103,6 +103,156 @@ def obtain_parking_distribution_strata (id_strate:int):
         lots_parking_reg =pd.read_sql(lots_parking,con=con1)
     return lots_parking_reg
 
+def obtain_sample_input_data(id_strate:int):
+    eng = get_connection()
+    query =f'''
+        with lot_ass as (
+            SELECT
+                *
+            FROM
+                assignation_strates ass
+            WHERE
+                id_strate = %(id)s
+        ), lot_values AS(
+            SELECT
+                g_no_lot,
+                nb_entrees,
+                cubf_presents,
+                sup_planch_tot,
+                n_logements_tot,
+                premiere_constr,
+                valeur_totale,
+                cubf_principal
+            FROM
+                inputs_validation
+            where 
+                g_no_lot in (select g_no_lot from lot_ass)
+        ), distance_to_parliament AS(
+            SELECT
+                g_no_lot,
+				ST_Transform(ST_Centroid(geometry),4326) as lot_centroid,
+				ST_Point(-71.21417,46.80861,4326) as parliament,
+                ST_distance(ST_Transform(ST_Centroid(geometry),32198),ST_Transform(ST_Point(-71.21417,46.80861,4326),32198)) as dist_to_parliament,
+				g_va_suprf as superf_lot
+            FROM
+                cadastre
+            WHERE g_no_lot IN(select g_no_lot from lot_ass)
+        ),reg_inventory AS (
+			SELECT
+				g_no_lot,
+				CEIL(n_places_min) as y_pred,
+				regexp_split_to_array(id_reg_stat, '[,/]')::int[] AS list_id_reg,
+				regexp_split_to_array(id_er, '[,/]')::int[] AS list_id_er
+			FROM 
+				inventaire_stationnement
+			where g_no_lot in (select g_no_lot from lot_ass) and methode_estime=2
+		), units AS (
+			SELECT 
+				ri.g_no_lot,
+				ri.list_id_reg,
+				ri.list_id_er,
+				ARRAY_AGG(DISTINCT rse.unite) as list_unite,
+				ARRAY[1,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21] && ARRAY_AGG(DISTINCT rse.unite) as atypical_units 
+			FROM 
+				reg_inventory ri
+			left join reg_stationnement_empile rse on rse.id_reg_stat = any(ri.list_id_reg)
+			group by ri.list_id_reg,ri.list_id_er,ri.g_no_lot
+		)
+        SELECT
+			lv.*,
+			la.id_strate,
+			dtp.dist_to_parliament,
+			dtp.lot_centroid,
+			dtp.parliament,
+            dtp.superf_lot,
+			u.list_id_reg,
+			u.list_id_er,
+			u.list_unite,
+			u.atypical_units
+        from lot_ass la
+        LEFT JOIN lot_values lv on lv.g_no_lot = la.g_no_lot
+        left join distance_to_parliament dtp on dtp.g_no_lot=la.g_no_lot 
+		left join units u on u.g_no_lot = la.g_no_lot
+    '''
+    with eng.connect() as con1:
+        input_data = pd.read_sql_query(query,con=con1,params={"id":id_strate})
+    return input_data
+
+def obtain_population_input_data(id_strate:int):
+    eng = get_connection()
+    query =f'''
+        with lot_ass as (
+            SELECT
+                *
+            FROM
+                association_strates ass
+            WHERE
+                id_strate = %(id)s
+        ), lot_values AS(
+            SELECT
+                g_no_lot,
+                nb_entrees,
+                cubf_presents,
+                sup_planch_tot,
+                n_logements_tot,
+                premiere_constr,
+                valeur_totale,
+                cubf_principal
+            FROM
+                inputs_validation
+            where 
+                g_no_lot in (select g_no_lot from lot_ass)
+        ), distance_to_parliament AS(
+            SELECT
+                g_no_lot,
+				ST_Transform(ST_Centroid(geometry),4326) as lot_centroid,
+				ST_Point(-71.21417,46.80861,4326) as parliament,
+                ST_distance(ST_Transform(ST_Centroid(geometry),32198),ST_Transform(ST_Point(-71.21417,46.80861,4326),32198)) as dist_to_parliament,
+				g_va_suprf as superf_lot
+            FROM
+                cadastre
+            WHERE g_no_lot IN(select g_no_lot from lot_ass)
+        ),reg_inventory AS (
+			SELECT
+				g_no_lot,
+				CEIL(n_places_min) as y_pred,
+				regexp_split_to_array(id_reg_stat, '[,/]')::int[] AS list_id_reg,
+				regexp_split_to_array(id_er, '[,/]')::int[] AS list_id_er
+			FROM 
+				inventaire_stationnement
+			where g_no_lot in (select g_no_lot from lot_ass) and methode_estime=2
+		), units AS (
+			SELECT 
+				ri.g_no_lot,
+				ri.list_id_reg,
+				ri.list_id_er,
+				ARRAY_AGG(DISTINCT rse.unite) as list_unite,
+				ARRAY[1,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21] && ARRAY_AGG(DISTINCT rse.unite) as atypical_units 
+			FROM 
+				reg_inventory ri
+			left join reg_stationnement_empile rse on rse.id_reg_stat = any(ri.list_id_reg)
+			group by ri.list_id_reg,ri.list_id_er,ri.g_no_lot
+		)
+        SELECT
+			lv.*,
+			la.id_strate,
+			dtp.dist_to_parliament,
+			dtp.lot_centroid,
+			dtp.parliament,
+            dtp.superf_lot,
+			u.list_id_reg,
+			u.list_id_er,
+			u.list_unite,
+			u.atypical_units
+        from lot_ass la
+        LEFT JOIN lot_values lv on lv.g_no_lot = la.g_no_lot
+        left join distance_to_parliament dtp on dtp.g_no_lot=la.g_no_lot 
+		left join units u on u.g_no_lot = la.g_no_lot
+    '''
+    with eng.connect() as con1:
+        input_data = pd.read_sql_query(query,con=con1,params={"id":id_strate})
+    return input_data
+
 def get_connection():
     env_data = de.load_dotenv()
     pg_host = os.environ.get('DB_HOST', 'localhost') #defaut localhost host.docker.internal
