@@ -224,12 +224,12 @@ def graphique_distro_erreur(val_data:pd.DataFrame,ax:plt.axes,n_sample:int,bins:
     ax.set_xlabel(f'obs-pred')
     ax.set_ylabel(f'Nombre de propriété')
 
-def graphique_QQ(val_data:pd.DataFrame,shap:float,skewness:float,ax:plt.axes):
+def graphique_QQ(val_data:pd.DataFrame,ax:plt.axes):
     ## -----------------------------------------------------------
     # diagramme q-q comparaison à une loi normale
     ## -----------------------------------------------------------
     stats.probplot(val_data['error'], dist="norm", plot=ax)
-    ax.set_title(f'Q-Q - SW= {shap.statistic:.2f} - Skew= {skewness:.2f}')
+    ax.set_title(f'Q-Q distribution normale')
     ax.set_xlabel(f'Quantiles théoriques')
     ax.set_ylabel(f'Valeurs observées')
     #plt.show()
@@ -331,8 +331,8 @@ def graphique_predit_vs_obs(val_data,ax):
     val_data.plot(kind='scatter',x='y_pred',y='y_obs',ax=ax[0,3])
     ax[0,3].axline((0, 0), (val_data['y_obs'].max(), val_data['y_obs'].max()), linewidth=4, color='r')
 
-def print_out_in_figure(fig:plt.figure,val_data,bootstrap_return,rmse,mae,r2_score):
-    fig.text(0.8,0.15,f"""Places/lot obs moy = {np.mean(val_data['y_obs']):.2f}\n Places/lot pred moy = {np.mean(val_data['y_pred']):.2f}\nME = {bootstrap_return['erreur_moyenne']:.2f} places \n RMSE = {rmse:.2f}\n MAE = {mae:.2f}\n  $R^2$ = {r2_score:.2f}""")
+def print_out_in_figure(fig:plt.figure,val_data,bootstrap_return,rmse,mae,r2_score,shap,skew):
+    fig.text(0.8,0.15,f"""Shapiro Erreur = {shap}\n Skew Erreur = {skew}\n Places/lot obs moy = {np.mean(val_data['y_obs']):.2f}\n Places/lot pred moy = {np.mean(val_data['y_pred']):.2f}\nME = {bootstrap_return['erreur_moyenne']:.2f} places \n RMSE = {rmse:.2f}\n MAE = {mae:.2f}\n  $R^2$ = {r2_score:.2f}""")
 
 def graphiques_analyse_residus(val_data:pd.DataFrame,sample_input_values:pd.DataFrame,strat_desc:str):
     val_data_joined = val_data.copy().merge(sample_input_values.copy(),on='g_no_lot',how='left')
