@@ -8,10 +8,14 @@ if __name__ =="__main__":
         "text.usetex": True,
         "font.family": "serif",
         "font.serif": ["Latin Modern Roman"],
-        "axes.labelsize": 14,
-        "font.size": 14,
-        "legend.fontsize": 12,  # Increased legend font size
-        "figure.autolayout": True
+        "axes.labelsize": 10,
+        "font.size": 12,
+        "legend.fontsize": 10,  # Increased legend font size
+        "axes.titlesize":10,
+        "figure.autolayout": True,
+        "xtick.labelsize": 10,  # x-axis tick labels
+        "ytick.labelsize": 10,  # y-axis tick labels
+        "figure.autolayout": False
     })
     n_it_range= [1000,10000]
     n_it_select = 2000

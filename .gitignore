@@ -1,2 +1,6 @@
 .env
 /__pycache__
+
+my_figure*
+ana_res*
+int_erreur*
