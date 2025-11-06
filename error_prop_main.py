@@ -19,12 +19,18 @@ if __name__ =="__main__":
     })
     n_it_range= [1000,10000]
     n_it_select = 2000
-    srh.single_strata(36,5)#,jitter=0.3
+    # Res
+    srh.single_strata(36,5,jitter=0.3)#
     srh.single_strata(43,5,jitter=0.3)#,jitter=0.3
     srh.single_strata(44,5)#,max_error=25
-    srh.single_strata(40,5)#,max_error=75
-    srh.single_strata(41,5)#,max_error=50
-    srh.single_strata(39,5)
-    srh.single_strata(42,5)
+    # comm
+    srh.single_strata(40,5,max_error=75)#
+    # serv
+    srh.single_strata(41,5,max_error=50)#
+    #ind
+    srh.single_strata(39,5,max_error=100)
+    # Assemblée récréation
+    srh.single_strata(42,5,max_error=100)
+    #usage multiple
     srh.single_strata(34,5)
     #plt.show()
