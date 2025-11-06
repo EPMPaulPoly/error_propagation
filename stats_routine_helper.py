@@ -145,7 +145,7 @@ def elimine_donnnees_aberrantes(val_data:pd.DataFrame,max_error:int,id_strate:in
     ax[1].axhline(clean_mean,linestyle='--',color='red')
     donnees_utiles.plot(x='y_pred',y='error',xlabel='$y_{{pred}}$',ylabel='$e=y_{{obs}}-y_{{pred}}$',title='Avec filtre',ax=ax[1],ylim=[-ylimabs,ylimabs],kind='scatter')
     fig.suptitle(f'{strate_desc} - $e_{{max}}$ = {max_error}')
-    fig.savefig(f'filtre_{id_strate}_e_{max_error}',dpi=300)
+    fig.savefig(f'output/filtre_{id_strate}_e_{max_error}',dpi=300)
     return donnees_utiles,donnees_aberrantes
 
 def calcule_erreur_moyenne_absolue(val_data:pd.DataFrame):
@@ -237,7 +237,7 @@ def single_strata(id_strate:int,bins:int=5,xlim:list[int]=None,max_error:int=Non
     fig.subplots_adjust(right=0.875,left=0.08,bottom=0.05,top=0.925,hspace=0.25,wspace=0.5)
     # Add separate axes for the text
     print_out_in_figure(fig,val_data_check,bootstrap_return,rmse,r2_score,shap,skewness,[0.9,0.4])
-    base_name = f"int_erreur_{id_strate}"
+    base_name = f"output/int_erreur_{id_strate}"
     if max_error is not None:
         base_name += f"_e_{max_error}"
     if jitter_bool:
@@ -251,7 +251,7 @@ def single_strata(id_strate:int,bins:int=5,xlim:list[int]=None,max_error:int=Non
     
 def graphiques_analyse_residus(val_data:pd.DataFrame,sample_input_values:pd.DataFrame,strat_desc:str,jitter_bool:bool=False,max_error:int=None):
     val_data_joined = val_data.copy().merge(sample_input_values.copy(),on='g_no_lot',how='left')
-    fig,ax = plt.subplots(nrows=2,ncols=5,figsize=[11,8.5],sharey=True)
+    fig,ax = plt.subplots(nrows=5,ncols=6,figsize=[11,8.5],sharey=True)
     graph_erreur_vs_aire_plancher(val_data_joined,ax[0,0],jitter_bool)
     graph_erreur_vs_date_constr(val_data_joined,ax[0,1],jitter_bool)
     graph_erreur_vs_distance_parlement(val_data_joined,ax[0,2],jitter_bool)
@@ -262,6 +262,7 @@ def graphiques_analyse_residus(val_data:pd.DataFrame,sample_input_values:pd.Data
     graph_erreur_vs_val_role(val_data_joined,ax[1,2],jitter_bool)
     graph_erreur_vs_val_m2(val_data_joined,ax[1,3],jitter_bool)
     graph_erreur_vs_y_pred_m2_par_val(val_data_joined,ax[1,4],jitter_bool)
+    #graph_erreur_vs_y_pred_par_m2(val_data_joined,ax[1,5],jitter_bool)
     sup_title_base = f'Analyse Résidus - {strat_desc}'
     if jitter_bool is True:
         sup_title_base += ' - Bruités'
@@ -270,7 +271,7 @@ def graphiques_analyse_residus(val_data:pd.DataFrame,sample_input_values:pd.Data
     fig.suptitle(sup_title_base,fontsize=12)
     id_strate = val_data_joined['id_strate_x'].max()
     fig.subplots_adjust(right=0.95,left=0.08,bottom=0.1,top=0.95,hspace=0.25,wspace=0.1)
-    base_name = f'ana_res_{id_strate}'
+    base_name = f'output/ana_res_{id_strate}'
     if max_error is not None:
         base_name += f"_e_{max_error}"
     if jitter_bool:
@@ -534,3 +535,13 @@ def graph_erreur_vs_unite_atypiques(val_data:pd.DataFrame,ax:plt.axes,jitter_boo
     ax.set_title("")
     ax.axhline(0,color='red',linestyle="--")
 
+def graph_erreur_vs_y_pred_par_m2(val_data:pd.DataFrame,ax:plt.axes,jitter_bool:bool=False):
+    val_data_add = val_data.copy()
+    val_data_add['predict'] = val_data_add['y_pred']/val_data_add['superf_lot']
+    if jitter_bool:
+        ylim = [-np.max(np.abs(val_data['erreur_bruitee'])),np.max(np.abs(val_data['erreur_bruitee']))]
+        val_data_add.plot(x='predict',y='erreur_bruitee',xlabel=r'$\frac{y_{pred}}{m^{2}_{\mathrm{lot}}}$',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$',ax=ax,ylim=ylim)
+    else:
+        ylim = [-np.max(np.abs(val_data['error'])),np.max(np.abs(val_data['error']))]
+        val_data_add.plot(x='predict',y='error',xlabel=r'$\frac{y_{pred}}{m^{2}_{\mathrm{lot}}}$',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax,ylim=ylim)
+    ax.axhline(0,color='red',linestyle="--")
