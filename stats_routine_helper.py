@@ -251,7 +251,7 @@ def single_strata(id_strate:int,bins:int=5,xlim:list[int]=None,max_error:int=Non
     
 def graphiques_analyse_residus(val_data:pd.DataFrame,sample_input_values:pd.DataFrame,strat_desc:str,jitter_bool:bool=False,max_error:int=None):
     val_data_joined = val_data.copy().merge(sample_input_values.copy(),on='g_no_lot',how='left')
-    fig,ax = plt.subplots(nrows=5,ncols=6,figsize=[11,8.5],sharey=True)
+    fig,ax = plt.subplots(nrows=2,ncols=5,figsize=[11,8.5],sharey=True)
     graph_erreur_vs_aire_plancher(val_data_joined,ax[0,0],jitter_bool)
     graph_erreur_vs_date_constr(val_data_joined,ax[0,1],jitter_bool)
     graph_erreur_vs_distance_parlement(val_data_joined,ax[0,2],jitter_bool)
