@@ -32,5 +32,5 @@ if __name__ =="__main__":
     # Assemblée récréation
     srh.single_strata(42,5,max_error=100)
     #usage multiple
-    srh.single_strata(34,5)
+    srh.single_strata(34,5,max_error=100)
     #plt.show()

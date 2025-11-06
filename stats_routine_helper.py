@@ -270,7 +270,7 @@ def single_strata(id_strate:int,bins:int=5,xlim:list[int]=None,max_error:int=Non
         plt.xlabel('Catégorie')
         plt.ylabel('Erreur')
         plt.savefig("output/boxplot_error_by_category_42.png", dpi=300, bbox_inches="tight")
-        plt.show()
+        #plt.show()
         
 
 
