@@ -8,19 +8,29 @@ if __name__ =="__main__":
         "text.usetex": True,
         "font.family": "serif",
         "font.serif": ["Latin Modern Roman"],
-        "axes.labelsize": 14,
-        "font.size": 14,
-        "legend.fontsize": 12,  # Increased legend font size
-        "figure.autolayout": True
+        "axes.labelsize": 10,
+        "font.size": 12,
+        "legend.fontsize": 10,  # Increased legend font size
+        "axes.titlesize":10,
+        "figure.autolayout": True,
+        "xtick.labelsize": 10,  # x-axis tick labels
+        "ytick.labelsize": 10,  # y-axis tick labels
+        "figure.autolayout": False
     })
     n_it_range= [1000,10000]
     n_it_select = 2000
-    srh.single_strata(36,[0,10],5)
-    srh.single_strata(43,[0,20],5)
-    srh.single_strata(44,[0,100],5)
-    srh.single_strata(40,[0,400],5,max_error=100)
-    srh.single_strata(41,[0,400],5)
-    srh.single_strata(39,[0,200],5,max_error=95)
-    srh.single_strata(42,[0,200],5)
-    srh.single_strata(34,[0,400],5,max_error=95)
-    plt.show()
+    # Res
+    srh.single_strata(36,5,jitter=0.3)#
+    srh.single_strata(43,5,jitter=0.3)#,jitter=0.3
+    srh.single_strata(44,5)#,max_error=25
+    # comm
+    srh.single_strata(40,5,max_error=75)#
+    # serv
+    srh.single_strata(41,5,max_error=50)#
+    #ind
+    srh.single_strata(39,5,max_error=100)
+    # Assemblée récréation
+    srh.single_strata(42,5,max_error=100)
+    #usage multiple
+    srh.single_strata(34,5,max_error=100)
+    #plt.show()
