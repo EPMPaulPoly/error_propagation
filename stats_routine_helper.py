@@ -133,9 +133,19 @@ def calcule_erreur_carre(val_data:pd.DataFrame)->pd.DataFrame:
     val_data['error_squared'] = val_data['error']**2
     return val_data
 
-def elimine_donnnees_aberrantes(val_data:pd.DataFrame,max_error:int):
+def elimine_donnnees_aberrantes(val_data:pd.DataFrame,max_error:int,id_strate:int,strate_desc):
     donnees_utiles = val_data.loc[abs(val_data['error'])<max_error]
     donnees_aberrantes = val_data.loc[abs(val_data['error'])>=max_error]
+    fig,ax = plt.subplots(ncols=2,nrows=1,figsize=[8.5,5],sharey=True)
+    ylimabs = np.max(np.abs(val_data['error']))
+    dirty_mean = np.mean(val_data['error'])
+    clean_mean = np.mean(donnees_utiles['error'])
+    val_data.plot(x='y_pred',y='error',xlabel='$y_{{pred}}$',ylabel='$e=y_{{obs}}-y_{{pred}}$',title='Sans filtre',ax=ax[0],ylim=[-ylimabs,ylimabs],kind='scatter')
+    ax[0].axhline(dirty_mean,linestyle='--',color='red')
+    ax[1].axhline(clean_mean,linestyle='--',color='red')
+    donnees_utiles.plot(x='y_pred',y='error',xlabel='$y_{{pred}}$',ylabel='$e=y_{{obs}}-y_{{pred}}$',title='Avec filtre',ax=ax[1],ylim=[-ylimabs,ylimabs],kind='scatter')
+    fig.suptitle(f'{strate_desc} - $e_{{max}}$ = {max_error}')
+    fig.savefig(f'filtre_{id_strate}_e_{max_error}',dpi=300)
     return donnees_utiles,donnees_aberrantes
 
 def calcule_erreur_moyenne_absolue(val_data:pd.DataFrame):
@@ -168,19 +178,7 @@ def single_strata(id_strate:int,bins:int=5,xlim:list[int]=None,max_error:int=Non
     if xlim is None:
         max_pred = int(val_data_check['y_pred'].max())
         xlim = [0,max_pred*1.2]
-    #-----------------------------------------
-    # statistiques de base)
-    # -------------------------------
-    rmse = skm.root_mean_squared_error(val_data_check['y_obs'],val_data_check['y_pred'])
-    mae = skm.mean_absolute_error(val_data_check['y_obs'],val_data_check['y_pred'])
-    r2_score = skm.r2_score(val_data_check['y_obs'],val_data_check['y_pred'])
-    #mape = skm.mean_absolute_percentage_error(val_data_check['y_obs'],val_data_check['y_pred'])
-    ## -----------------------------------------------------------
-    # Éliminiation optionnel des propriétés aberrantes
-    ## -----------------------------------------------------------
-    if max_error is not None:
-        val_data_check,don_aber = elimine_donnnees_aberrantes(val_data_check,max_error)
-        n_outliers = len(don_aber)
+    
     ## -----------------------------------------------------------
     # taille échantillon et population et description
     ## -----------------------------------------------------------
@@ -188,6 +186,20 @@ def single_strata(id_strate:int,bins:int=5,xlim:list[int]=None,max_error:int=Non
     
     n_lots = pop_counts.loc[pop_counts['id_strate']==id_strate,'popu_strate'].values[0]
     strat_desc = strata.loc[strata['id_strate']==id_strate,'desc_concat'].values[0]
+    ## -----------------------------------------------------------
+    # Éliminiation optionnel des propriétés aberrantes
+    ## -----------------------------------------------------------
+    if max_error is not None:
+        val_data_check,don_aber = elimine_donnnees_aberrantes(val_data_check,max_error,id_strate,strat_desc)
+        n_outliers = len(don_aber)
+        print('n_outliers :',n_outliers)
+    #-----------------------------------------
+    # statistiques de base)
+    # -------------------------------
+    rmse = skm.root_mean_squared_error(val_data_check['y_obs'],val_data_check['y_pred'])
+    mae = skm.mean_absolute_error(val_data_check['y_obs'],val_data_check['y_pred'])
+    r2_score = skm.r2_score(val_data_check['y_obs'],val_data_check['y_pred'])
+    #mape = skm.mean_absolute_percentage_error(val_data_check['y_obs'],val_data_check['y_pred'])
     ## -----------------------------------------------------------
     # statistique shapiro pour normalité et skewness pour asymétrie
     ## -----------------------------------------------------------
