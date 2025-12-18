@@ -253,6 +253,16 @@ def obtain_population_input_data(id_strate:int):
         input_data = pd.read_sql_query(query,con=con1,params={"id":id_strate})
     return input_data
 
+def obtain_overall_data(id_strate:int):
+    strata = obtain_strata() # strata titles
+    val_data = obtain_data() # observed values for whole shebang
+    pop_counts = obtain_population_sizes() # get population sizes from inputs table
+    stat_total_categ = obtain_parking_estimate_strata(id_strate) #estime de la population total
+    all_park = obtain_parking_distribution_strata(id_strate) # get all predictions in sample
+    sample_input_values = obtain_sample_input_data(id_strate)
+
+    return [strata,val_data,pop_counts,stat_total_categ,all_park,sample_input_values]
+
 def get_connection():
     env_data = de.load_dotenv()
     pg_host = os.environ.get('DB_HOST', 'localhost') #defaut localhost host.docker.internal

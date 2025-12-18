@@ -161,12 +161,13 @@ def calcule_erreur_bruitee(val_data:pd.DataFrame,bruit:float):
 def single_strata(id_strate:int,bins:int=5,xlim:list[int]=None,max_error:int=None,n_it_range:list[int]=None,jitter:float=None,perc_error:float=None,spot_error:int=None,interval_plots=False,error_plots=False,unit_plots=False):
     # Load data
 
-    strata = od.obtain_strata() # strata titles
-    val_data = od.obtain_data() # observed values for whole shebang
-    pop_counts = od.obtain_population_sizes() # get population sizes from inputs table
-    stat_total_categ =od.obtain_parking_estimate_strata(id_strate) #estime de la population total
-    all_park = od.obtain_parking_distribution_strata(id_strate) # get all predictions in sample
-    sample_input_values = od.obtain_sample_input_data(id_strate)
+   # strata = od.obtain_strata() # strata titles
+    #val_data = od.obtain_data() # observed values for whole shebang
+    #pop_counts = od.obtain_population_sizes() # get population sizes from inputs table
+    #stat_total_categ =od.obtain_parking_estimate_strata(id_strate) #estime de la population total
+    #all_park = od.obtain_parking_distribution_strata(id_strate) # get all predictions in sample
+    #sample_input_values = od.obtain_sample_input_data(id_strate)
+    [strata,val_data,pop_counts,stat_total_categ,all_park,sample_input_values] = od.obtain_overall_data(id_strate)
     #population_input_values = od.obtain_population_input_data(id_strate)
     n_iterations = 2000
     # Copie
