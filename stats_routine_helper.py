@@ -278,7 +278,7 @@ def graphique_unites(val_data_check,sample_input_values,max_error,id_strate):
     })
     ax=val_data_joined.boxplot(column='error', by='categ_label', grid=False)
     ax.axhline(0,color='red',linestyle='--')
-    plt.suptitle("Erreur par selon l'unité utilisée dans le règlement")
+    plt.suptitle("Erreur selon l'unité utilisée dans le règlement")
     plt.title('')
     plt.xlabel('Unités utilisées dans le règlement')
     plt.ylabel(r'$e = y_{\mathrm{obs}} - y_{\mathrm{pred}}$')
