@@ -8,13 +8,13 @@ if __name__ =="__main__":
         "text.usetex": True,
         "font.family": "serif",
         "font.serif": ["Latin Modern Roman"],
-        "axes.labelsize": 10,
+        "axes.labelsize": 12,
         "font.size": 12,
         "legend.fontsize": 10,  # Increased legend font size
-        "axes.titlesize":10,
+        "axes.titlesize":12,
         "figure.autolayout": True,
-        "xtick.labelsize": 10,  # x-axis tick labels
-        "ytick.labelsize": 10,  # y-axis tick labels
+        "xtick.labelsize": 12,  # x-axis tick labels
+        "ytick.labelsize": 12,  # y-axis tick labels
         "figure.autolayout": False
     })
     n_it_range= [1000,10000]
@@ -45,7 +45,7 @@ if __name__ =="__main__":
     plt.close()
 
     # Assemblée récréation
-    srh.single_strata(42,10,spot_error=10,perc_error=0.2,error_plots=True,unit_plots=True)
+    srh.single_strata(42,10,spot_error=10,perc_error=0.2,error_plots=True,interval_plots=True,unit_plots=True)
     plt.close()
     srh.single_strata(42,10,spot_error=10,perc_error=0.2,max_error=100,interval_plots=True)
     plt.close()
