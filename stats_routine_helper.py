@@ -246,7 +246,7 @@ def single_strata(id_strate:int,bins:int=5,xlim:list[int]=None,max_error:int=Non
         graphique_unites(val_data_check,sample_input_values,max_error,id_strate)
     if n_it_range is not None:
         analyse_sensibilite_iterations_bootstrap(n_it_range,val_data_check,n_sample,n_lots,stat_total_categ,strat_desc)
-    
+    plt.close('all')
         
 def graphique_unites(val_data_check,sample_input_values,max_error,id_strate):
     val_data_joined = val_data_check.copy().merge(sample_input_values.copy(),on='g_no_lot',how='left') 
@@ -292,25 +292,42 @@ def graphique_distr_intervalles(val_data_check,n_sample,n_lots,stat_total_categ,
     # début graphiques
     ## -----------------------------------------------------------
     
-    fig,ax = plt.subplots(nrows=2,ncols=4,figsize=[13,8.5],)
     # Titre figure
     sup_title_base =f'Catégorie: {strat_desc} - n= {n_sample} - N= {n_lots} - $\\sum y_{{pred}}$ = {stat_total_categ}'
     if max_error is not None:
         sup_title_base += f' - $e_{{max}}$={max_error} - $n_{{filtre}}$ = {n_sample-n_outliers}'
     if jitter_bool:
         sup_title_base += f' - Bruité'
-    fig.suptitle(sup_title_base,fontsize=12)
-    graphique_distro_erreur(val_data_check,ax[0,0],n_sample,bins,spot_error_bnd=spot_error)    
-    graphique_residus(val_data_check,n_sample,ax[0,1],xlim,jitter_bool,spot_error_bnd=spot_error,pct_error_bnd=perc_error)
-    graphique_residus_carre(val_data_check,n_sample,xlim,ax[0,2],spot_bnd_error=spot_error,perc_bnd_error=perc_error)
-    graphique_predit_vs_obs(val_data_check,ax[0,3],jitter_bool,spot_error=spot_error,perc_error=perc_error)
-    graphique_QQ(val_data_check,ax[1,0])
-    graphique_distro_pred(val_data_check,all_park,ax[1,1])
-    graphique_bootstrap_me(bootstrap_return,ax[1,2],n_iterations)
-    graphique_bootstrap_mae(bootstrap_return,ax[1,3],n_iterations)
-    fig.subplots_adjust(right=0.875,left=0.08,bottom=0.075,top=0.925,hspace=0.3,wspace=0.5)
+    fig1,ax1 = plt.subplots(nrows=1,ncols=2,figsize=[13,8.5],)
+    fig1.suptitle(sup_title_base+' - Survol',fontsize=12)
+    graphique_predit_vs_obs(val_data_check,ax1[0],jitter_bool,spot_error=spot_error,perc_error=perc_error)
+     
+    graphique_distro_pred(val_data_check,all_park,ax1[1])
+    fig1.subplots_adjust(right=0.875,left=0.08,bottom=0.075,top=0.925,hspace=0.3,wspace=0.2)
+    print_out_base_stats(fig1,val_data_check,r2_score,[0.35,0.35])
+
+    fig2,ax2 = plt.subplots(nrows=1,ncols=2,figsize=[13,8.5],)
+    fig2.suptitle(sup_title_base+' - Échelle',fontsize=12)
+    graphique_residus(val_data_check,n_sample,ax2[0],xlim,jitter_bool,spot_error_bnd=spot_error,pct_error_bnd=perc_error)
+    graphique_residus_carre(val_data_check,n_sample,xlim,ax2[1],spot_bnd_error=spot_error,perc_bnd_error=perc_error)
+    fig2.subplots_adjust(right=0.875,left=0.08,bottom=0.075,top=0.925,hspace=0.3,wspace=0.2)
+
+    fig3,ax3 = plt.subplots(nrows=1,ncols=2,figsize=[13,8.5],)
+    fig3.suptitle(sup_title_base+' - Distribution',fontsize=12)
+    graphique_QQ(val_data_check,ax3[0])
+    
+    graphique_distro_erreur(val_data_check,ax3[1],n_sample,bins,spot_error_bnd=spot_error)   
+    fig3.subplots_adjust(right=0.95,left=0.15,bottom=0.075,top=0.925,hspace=0.3,wspace=0.2)
+    print_out_distr_info(fig3,shap,skewness,[0.01,0.35])
+
+    fig4,ax4 = plt.subplots(nrows=1,ncols=2,figsize=[13,8.5],)
+    fig4.suptitle(sup_title_base+' - Auto-Amorçage',fontsize=12)
+    graphique_bootstrap_me(bootstrap_return,ax4[0],n_iterations)
+    graphique_bootstrap_mae(bootstrap_return,ax4[1],n_iterations)
+    fig4.subplots_adjust(right=0.875,left=0.08,bottom=0.075,top=0.875,hspace=0.3,wspace=0.2)
+    print_out_errors_info(fig4,bootstrap_return,rmse,[0.9,0.4])
     # Add separate axes for the text
-    print_out_in_figure(fig,val_data_check,bootstrap_return,rmse,r2_score,shap,skewness,[0.9,0.4])
+    #print_out_in_figure(fig4,val_data_check,bootstrap_return,rmse,r2_score,shap,skewness,[0.9,0.4])
     base_name = f"output/int_erreur_{id_strate}"
     if max_error is not None:
         base_name += f"_e_{max_error}"
@@ -320,25 +337,14 @@ def graphique_distr_intervalles(val_data_check,n_sample,n_lots,stat_total_categ,
         base_name+=f"_se_{spot_error:.0f}"
     if perc_error is not None:
         base_name+=f"_pe_{(100*perc_error):.0f}"
-    base_name +=".png"
-    fig.savefig(base_name, dpi=300)
+    fig1.savefig(base_name+'_a.png', dpi=300)
+    fig2.savefig(base_name+'_b.png', dpi=300)
+    fig3.savefig(base_name+'_c.png', dpi=300)
+    fig4.savefig(base_name+'_d.png', dpi=300)
     
 def graphiques_analyse_residus(val_data:pd.DataFrame,sample_input_values:pd.DataFrame,strat_desc:str,jitter_bool:bool=False,max_error:int=None,n_sample:int=None,n_outliers:int=None,spot_error:int=None,perc_error:float=None):
     val_data_joined = val_data.copy().merge(sample_input_values.copy(),on='g_no_lot',how='left')
-    fig,ax = plt.subplots(nrows=2,ncols=5,figsize=[13,8.5],sharey=True)
-    graph_erreur_vs_aire_plancher(val_data_joined,ax[0,0],jitter_bool,spot_error)
-    graph_erreur_vs_date_constr(val_data_joined,ax[0,1],jitter_bool,spot_error)
-    graph_erreur_vs_distance_parlement(val_data_joined,ax[0,2],jitter_bool,spot_error)
-    graph_erreur_vs_unite_atypiques(val_data_joined,ax[0,3],jitter_bool,spot_error)
-    graph_erreur_vs_y_pred(val_data_joined,ax[0,4],jitter_bool,spot_error,perc_error)
-    graph_erreur_vs_superf_lot(val_data_joined,ax[1,0],jitter_bool,spot_error)
-    graph_erreur_vs_n_log(val_data_joined,ax[1,1],jitter_bool,spot_error)
-    graph_erreur_vs_val_role(val_data_joined,ax[1,2],jitter_bool,spot_error)
-    #filtre pour données erronnées
-    val_data_joined = val_data_joined.loc[val_data_joined['valeur_totale']>100].copy()
-    graph_erreur_vs_val_m2(val_data_joined,ax[1,3],jitter_bool,spot_error)
-    graph_erreur_vs_y_pred_m2_par_val(val_data_joined,ax[1,4],jitter_bool,spot_error)
-    #graph_erreur_vs_y_pred_par_m2(val_data_joined,ax[1,5],jitter_bool)
+    # Formation titre
     sup_title_base = f'Analyse Résidus - {strat_desc}'
     if n_sample is not None:
         sup_title_base += f" - n= {n_sample}"
@@ -348,12 +354,53 @@ def graphiques_analyse_residus(val_data:pd.DataFrame,sample_input_values:pd.Data
         sup_title_base += ' - Bruités'
     if max_error is not None:
         sup_title_base += f' - $e_{{max}}$ = {max_error}'
-    fig.suptitle(sup_title_base,fontsize=12)
+    # Règlements
+    fig1,ax1 = plt.subplots(nrows=1,ncols=2,figsize=[13,8.5],sharey=True)
+    graph_erreur_vs_aire_plancher(val_data_joined,ax1[0],jitter_bool,spot_error)
+    graph_erreur_vs_n_log(val_data_joined,ax1[1],fig1,jitter_bool,spot_error)
+    fig1.suptitle(sup_title_base+' - Variables typiques',fontsize=12)
+    # Espace temps
+    fig2,ax2 = plt.subplots(nrows=1,ncols=2,figsize=[13,8.5],sharey=True)
+    graph_erreur_vs_date_constr(val_data_joined,ax2[0],jitter_bool,spot_error)
+    graph_erreur_vs_distance_parlement(val_data_joined,ax2[1],jitter_bool,spot_error)       
+    fig2.suptitle(sup_title_base+' - Espace Temps',fontsize=12)
+    # Unités Échelles
+    fig3,ax3 = plt.subplots(nrows=1,ncols=2,figsize=[13,8.5],sharey=True)
+    graph_erreur_vs_unite_atypiques(val_data_joined,ax3[0],jitter_bool,spot_error)
+    graph_erreur_vs_y_pred(val_data_joined,ax3[1],jitter_bool,spot_error,perc_error)
+    fig3.suptitle(sup_title_base+' - Unités Échelle',fontsize=12)
+
+    # Cash et lot
+    fig4,ax4 = plt.subplots(nrows=1,ncols=2,figsize=[13,8.5],sharey=True)
+    graph_erreur_vs_superf_lot(val_data_joined,ax4[0],jitter_bool,spot_error)
+    graph_erreur_vs_val_role(val_data_joined,ax4[1],jitter_bool,spot_error)
+    fig4.suptitle(sup_title_base+' - Valeur et taille de lot',fontsize=12)
+    #filtre pour données erronnées
+    
+    val_data_joined = val_data_joined.loc[val_data_joined['valeur_totale']>100].copy()
+    # fig 5: Intensité
+    fig5,ax5 = plt.subplots(nrows=1,ncols=2,figsize=[13,8.5],sharey=True)
+    graph_erreur_vs_val_m2(val_data_joined,ax5[0],jitter_bool,spot_error)
+    graph_erreur_vs_y_pred_m2_par_val(val_data_joined,ax5[1],jitter_bool,spot_error)
+    fig5.suptitle(sup_title_base+' - Densité foncière et intensité prédiction',fontsize=12)
+    #graph_erreur_vs_y_pred_par_m2(val_data_joined,ax[1,5],jitter_bool)
+    
+    
     id_strate = val_data_joined['id_strate_x'].max()
     if spot_error is not None or perc_error is not None:
-        fig.subplots_adjust(right=0.925,left=0.08,bottom=0.1,top=0.925,hspace=0.25,wspace=0.1)
+        fig1.subplots_adjust(right=0.925,left=0.08,bottom=0.1,top=0.925,hspace=0.25,wspace=0.1)
+        fig2.subplots_adjust(right=0.925,left=0.08,bottom=0.1,top=0.925,hspace=0.25,wspace=0.1)
+        fig3.subplots_adjust(right=0.925,left=0.08,bottom=0.1,top=0.925,hspace=0.25,wspace=0.1)
+        fig4.subplots_adjust(right=0.925,left=0.08,bottom=0.1,top=0.925,hspace=0.25,wspace=0.1)
+        fig5.subplots_adjust(right=0.925,left=0.08,bottom=0.1,top=0.925,hspace=0.25,wspace=0.1)
     else:
-        fig.subplots_adjust(right=0.95,left=0.08,bottom=0.1,top=0.925,hspace=0.25,wspace=0.1)
+        fig1.subplots_adjust(right=0.95,left=0.08,bottom=0.1,top=0.925,hspace=0.25,wspace=0.1)
+        fig2.subplots_adjust(right=0.925,left=0.08,bottom=0.1,top=0.925,hspace=0.25,wspace=0.1)
+        fig3.subplots_adjust(right=0.925,left=0.08,bottom=0.1,top=0.925,hspace=0.25,wspace=0.1)
+        fig4.subplots_adjust(right=0.925,left=0.08,bottom=0.1,top=0.925,hspace=0.25,wspace=0.1)
+        fig5.subplots_adjust(right=0.925,left=0.08,bottom=0.1,top=0.925,hspace=0.25,wspace=0.1)
+
+    # sauvegarde
     base_name = f'output/ana_res_{id_strate}'
     if max_error is not None:
         base_name += f"_e_{max_error}"
@@ -363,8 +410,11 @@ def graphiques_analyse_residus(val_data:pd.DataFrame,sample_input_values:pd.Data
         base_name+=f"_se_{spot_error:.0f}"
     if perc_error is not None:
         base_name+=f"_pe_{(100*perc_error):.0f}"
-    base_name+=".png"
-    fig.savefig(base_name, dpi=300)
+    fig1.savefig(base_name+'_a.png', dpi=300)
+    fig2.savefig(base_name+'_b.png', dpi=300)
+    fig3.savefig(base_name+'_c.png', dpi=300)
+    fig4.savefig(base_name+'_d.png', dpi=300)
+    fig5.savefig(base_name+'_e.png', dpi=300)
 
 def graphique_distro_erreur(val_data:pd.DataFrame,ax:plt.axes,n_sample:int,bins:int,spot_error_bnd:int=None):
     ## -----------------------------------------------------------
@@ -386,25 +436,26 @@ def graphique_distro_erreur(val_data:pd.DataFrame,ax:plt.axes,n_sample:int,bins:
     ax.set_xticks(xticks)
 
     ax.set_title(f'a) Distribution des erreurs')
-    ax.set_xlabel(r'$e = y_{\mathrm{obs}} - y_{\mathrm{pred}}$')
-    ax.set_ylabel('Nombre de propriétés')
+    ax.set_xlabel(r'$e = y_{\mathrm{obs}} - y_{\mathrm{pred}}$  [pl.]')
+    ax.set_ylabel('Nombre de propriétés [-]')
     ax.tick_params(axis='x', labelrotation=90)
     ax.tick_params(axis='both', labelsize=9, width=0.8, direction='out')
     ax.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
     # optional vertical line at zero for clarity
     ax.axvline(0, color='red', linewidth=1, linestyle='--')
     if spot_error_bnd is not None:
-        ax.axvline(spot_error_bnd, color='#2ca02c', linewidth=1, linestyle='--')
-        ax.axvline(-spot_error_bnd, color='#2ca02c', linewidth=1, linestyle='-.')
+        ax.axvline(spot_error_bnd, color='#2ca02c', linewidth=1, linestyle='--',label=f'$e =+{spot_error_bnd:.0f}$ pl.')
+        ax.axvline(-spot_error_bnd, color='#2ca02c', linewidth=1, linestyle='-.',label=f'$e =-{spot_error_bnd:.0f}$ pl.')
+    ax.legend(loc='center left', bbox_to_anchor=(0.75, 0.9), frameon=False, fontsize=8)
 
 def graphique_QQ(val_data:pd.DataFrame,ax:plt.axes):
     ## -----------------------------------------------------------
     # diagramme q-q comparaison à une loi normale
     ## -----------------------------------------------------------
     stats.probplot(val_data['error'], dist="norm", plot=ax)
-    ax.set_title(f'e) Q-Q distribution normale')
-    ax.set_xlabel(f'Quantiles théoriques')
-    ax.set_ylabel(f'Valeurs observées e')
+    ax.set_title(f'a) Q-Q distribution normale')
+    ax.set_xlabel(f'Quantiles théoriques loi normale')
+    ax.set_ylabel(f'Quantiles observés e')
     #plt.show()
 
 def graphique_residus(val_data:pd.DataFrame,n_sample:int,ax:plt.axes,xlim:list[int],jitter:bool=False,spot_error_bnd:int=None,pct_error_bnd:float=None):
@@ -413,24 +464,25 @@ def graphique_residus(val_data:pd.DataFrame,n_sample:int,ax:plt.axes,xlim:list[i
     ## -----------------------------------------------------------
     if jitter:
         ylim = [-np.max(np.abs(val_data['erreur_bruitee']))*1.25,np.max(np.abs(val_data['error']))*1.25]
-        val_data.plot(kind='scatter',x='y_pred',y='erreur_bruitee',xlabel='$y_{{pred}}$',ylabel='$e=y_{{obs}}-y_{{pred}}$',ax=ax,xlim=xlim,title=f'b) Prédit vs erreurs',ylim=ylim)
+        val_data.plot(kind='scatter',x='y_pred',y='erreur_bruitee',xlabel='$y_{{pred}}$ [pl.]',ylabel='$e=y_{{obs}}-y_{{pred}}$ [pl.]',ax=ax,xlim=xlim,title=f'a) Prédit vs erreurs',ylim=ylim)
     else:
         ylim = [-np.max(np.abs(val_data['error']))*1.25,np.max(np.abs(val_data['error']))*1.25]
-        val_data.plot(kind='scatter',x='y_pred',y='error',xlabel='$y_{{pred}}$',ylabel='$e=y_{{obs}}-y_{{pred}}$',ax=ax,xlim=xlim,title=f'b) Prédit vs erreurs',ylim=ylim)
-    ax.axhline(0,color='red',linestyle='--')
+        val_data.plot(kind='scatter',x='y_pred',y='error',xlabel='$y_{{pred}}$ [pl.]',ylabel='$e=y_{{obs}}-y_{{pred}}$ [pl.]',ax=ax,xlim=xlim,title=f'a) Prédit vs erreurs',ylim=ylim)
+    ax.axhline(0,color='red',linestyle='--',label='$e = 0$')
     if spot_error_bnd is not None:
-        ax.axhline(spot_error_bnd, color='#2ca02c', linewidth=1, linestyle='--')
-        ax.axhline(-spot_error_bnd, color='#2ca02c', linewidth=1, linestyle='-.')
+        ax.axhline(spot_error_bnd, color='#2ca02c', linewidth=1, linestyle='--',label=f'$e =+{spot_error_bnd:.0f}$ pl.')
+        ax.axhline(-spot_error_bnd, color='#2ca02c', linewidth=1, linestyle='-.',label=f'$e =-{spot_error_bnd:.0f}$ pl.')
     if pct_error_bnd is not None:
         x_max = val_data['y_pred'].max()
-        ax.axline((0,0),(x_max,x_max*pct_error_bnd),color='#ff7f0e',linestyle='--')
-        ax.axline((0,0),(x_max,-x_max*pct_error_bnd),color='#ff7f0e',linestyle='-.')
+        ax.axline((0,0),(x_max,x_max*pct_error_bnd),color='#ff7f0e',linestyle='--',label=f'$e= +{pct_error_bnd*100:.0f}$ $\%$')
+        ax.axline((0,0),(x_max,-x_max*pct_error_bnd),color='#ff7f0e',linestyle='-.',label=f'$e= -{pct_error_bnd*100:.0f}$ $\%$')
+    ax.legend(loc='center left', bbox_to_anchor=(0.75, 0.9), frameon=False, fontsize=8)
 
 def graphique_residus_carre(val_data:pd.DataFrame,n_sample:int,xlim:list[int],ax:plt.axes,spot_bnd_error:int=None,perc_bnd_error:float=None):
     ## -----------------------------------------------------------
     # prédit vs résidus au carré voir si on peut faire une prédiction sur l'entier positif
     ## -----------------------------------------------------------
-    val_data.plot(kind='scatter',x='y_pred',y='error_squared',xlabel='$y_{{pred}}$',ylabel='$e^2=(y_{{obs}}-y_{{pred}})^2$',ax=ax,xlim=xlim,title=f'c) Prédit vs erreurs au carré - n={n_sample}')  
+    val_data.plot(kind='scatter',x='y_pred',y='error_squared',xlabel='$y_{{pred}}$ [pl.]',ylabel='$e^2=(y_{{obs}}-y_{{pred}})^2$  [pl.$^2$]',ax=ax,xlim=xlim,title=f'b) Prédit vs erreurs au carré - n={n_sample}')  
     # Define line x-range
     xs = np.linspace(xlim[0], xlim[1], 200)
 
@@ -471,7 +523,7 @@ def graphique_bootstrap_me(bootstrap_return,ax:plt.axes,n_iterations):
     line_bias = ax.axvline(x=bootstrap_return['me'], color='cyan', linestyle='--')
     line_ci_l = ax.axvline(x=bootstrap_return['me_pi_lower'], color='lime', linestyle='-')
     line_ci_h = ax.axvline(x=bootstrap_return['me_pi_upper'], color='red', linestyle='-')
-    ax.set_title(f'g) Autoamorçage - {n_iterations} iter \nErreur Moyenne')
+    ax.set_title(f'a) Autoamorçage - {n_iterations} iter \nErreur Moyenne')
     # build handles list skipping None values (in case hist produced no patches)
     handles = [h for h in [hist_patch, line_inv, line_bias, line_ci_l, line_ci_h] if h is not None]
     labels = ['AA', f'Zero', f'ME = {bootstrap_return['me']:.2f}', f'$ME_{{bas}}$ = {bootstrap_return['me_pi_lower']:.2f}', f'$ME_{{haut}}$={bootstrap_return['me_pi_upper']:.2f}']
@@ -494,7 +546,7 @@ def graphique_bootstrap_mae(bootstrap_return,ax:plt.axes,n_iterations):
     line_bias = ax.axvline(x=bootstrap_return['mae'], color='cyan', linestyle='--')
     line_ci_l = ax.axvline(x=bootstrap_return['mae_pi_lower'], color='lime', linestyle='-')
     line_ci_h = ax.axvline(x=bootstrap_return['mae_pi_upper'], color='red', linestyle='-')
-    ax.set_title(f'h) Autoamorçage - {n_iterations} iter \n Erreur absolue moyenne')
+    ax.set_title(f'b) Autoamorçage - {n_iterations} iter \n Erreur absolue moyenne')
     # build handles list skipping None values (in case hist produced no patches)
     handles = [h for h in [hist_patch, line_inv, line_bias, line_ci_l, line_ci_h] if h is not None]
     labels = ['AA', f'Zero', f'MAE = {bootstrap_return['mae']:.2f}', f'$MAE_{{bas}}$ = {bootstrap_return['mae_pi_lower']:.2f}', f'$MAE_{{haut}}$={bootstrap_return['mae_pi_upper']:.2f}']
@@ -584,8 +636,8 @@ def graphique_distro_pred(val_data, all_park, ax, max_unique_for_bar=12, bar_off
 
     # --- Labels, legend, rotation ---
     ax.set_ylim(0,y_max*1.25)
-    ax.set_title('f) Distribution des prédictions')
-    ax.set_xlabel('Prédiction')
+    ax.set_title('b) Distribution des prédictions')
+    ax.set_xlabel('Prédiction [pl.]')
     ax.set_ylabel('Fréquence')
     ax.tick_params(axis='x', labelrotation=90)
     ax.legend()
@@ -597,9 +649,9 @@ def graphique_predit_vs_obs(val_data,ax,jitter_bool:bool=False,spot_error:int=No
     
     ax.axline((0, 0), (val_data['y_pred'].max(), val_data['y_pred'].max()), linewidth=1, color='r',linestyle='--',label='$e=0$')
     if jitter_bool:
-        val_data.plot(kind='scatter',x='y_pred',y='y_obs_bruitee',ax=ax,xlabel='$y_{{pred}}$',ylabel='$y_{{obs}}+\\epsilon$',title='d) Observé vs prédit',zorder=3)
+        val_data.plot(kind='scatter',x='y_pred',y='y_obs_bruitee',ax=ax,xlabel='$y_{{pred}}$',ylabel='$y_{{obs}}+\\epsilon$',title='a) Observé vs prédit',zorder=3)
     else:
-        val_data.plot(kind='scatter',x='y_pred',y='y_obs',ax=ax,xlabel='$y_{{pred}}$',ylabel='$y_{{obs}}$',title='d) Observé vs prédit',zorder=3)
+        val_data.plot(kind='scatter',x='y_pred',y='y_obs',ax=ax,xlabel='$y_{{pred}}$ [pl.]',ylabel='$y_{{obs}}$ [pl.]',title='a) Observé vs prédit',zorder=3)
     # Plot range
     x_min = -0.5
     x_max = val_data['y_pred'].max() * 1.05
@@ -619,7 +671,7 @@ def graphique_predit_vs_obs(val_data,ax,jitter_bool:bool=False,spot_error:int=No
         ax.plot([x_min, x_max], [x_min * (1 - perc_error), x_max * (1 - perc_error)], linestyle='-.', color='#ff7f0e', linewidth=1, label=f'-{int(perc_error*100):.0f} \%')
 
     # Legend on the right outside the plot
-    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=False, fontsize=8)
+    ax.legend(loc='center left', bbox_to_anchor=(0.8, 0.5), frameon=False, fontsize=8)
     y_max = val_data['y_obs'].max()
     ax.set_ylim(-0.5, y_max*1.05)
     # Optional grid and square aspect
@@ -629,14 +681,22 @@ def graphique_predit_vs_obs(val_data,ax,jitter_bool:bool=False,spot_error:int=No
 def print_out_in_figure(fig:plt.figure,val_data,bootstrap_return,rmse,r2_score,shap,skew,loc):
     fig.text(loc[0],loc[1],f"""Shapiro $e$ = {shap.statistic:.2f}\n Skew $e$ = {skew:.2f}\n $\\bar{{y}}_{{obs}}$= {np.mean(val_data['y_obs']):.2f}\n $\\bar{{y}}_{{pred}}$ = {np.mean(val_data['y_pred']):.2f}\nME = {bootstrap_return['me']:.2f}  \n RMSE = {rmse:.2f}\n MAE = {bootstrap_return['mae']:.2f} """,fontsize=10)
 
+def print_out_base_stats(fig:plt.figure,val_data,r2_score,loc):
+    fig.text(loc[0],loc[1],f"""$ \\bar{{y}}_{{obs}}$= {np.mean(val_data['y_obs']):.2f}\n $\\bar{{y}}_{{pred}}$ = {np.mean(val_data['y_pred']):.2f}\n $R^2$= {r2_score:.2f}""",fontsize=10)
+
+def print_out_distr_info(fig:plt.figure,shap,skew,loc):
+    fig.text(loc[0],loc[1],f"""Shapiro $e$ = {shap.statistic:.2f}\n Skew $e$ = {skew:.2f}\n""",fontsize=10)
+
+def print_out_errors_info(fig:plt.figure,bootstrap_return,rmse,loc):
+    fig.text(loc[0],loc[1],f"""ME = {bootstrap_return['me']:.2f}  \n RMSE = {rmse:.2f}\n MAE = {bootstrap_return['mae']:.2f} """,fontsize=10)
 
 def graph_erreur_vs_aire_plancher(val_data:pd.DataFrame,ax:plt.axes,jitter_bool:bool=False,spot_error:int=None):
     if jitter_bool:
         ylim = [-np.max(np.abs(val_data['erreur_bruitee']))*1.25,np.max(np.abs(val_data['erreur_bruitee']))*1.25]
-        val_data.plot(x='sup_planch_tot',y='erreur_bruitee',xlabel='Aire plancher',ylabel='$y_{{obs}}-y_{{pred}} + \\epsilon$',kind='scatter',ax=ax,ylim=ylim,title='a)')
+        val_data.plot(x='sup_planch_tot',y='erreur_bruitee',xlabel='Aire plancher [$m^2$]',ylabel='$y_{{obs}}-y_{{pred}} + \\epsilon$ [pl.]',kind='scatter',ax=ax,ylim=ylim,title="a) Superficie d'étage")
     else:    
         ylim = [-np.max(np.abs(val_data['error']))*1.25,np.max(np.abs(val_data['error']))*1.25]
-        val_data.plot(x='sup_planch_tot',y='error',xlabel='Aire plancher',ylabel='$y_{{obs}}-y_{{pred}}$',kind='scatter',ax=ax,ylim=ylim,title='a)')
+        val_data.plot(x='sup_planch_tot',y='error',xlabel='Aire plancher [$m^2$]',ylabel='$y_{{obs}}-y_{{pred}}$ [pl.]',kind='scatter',ax=ax,ylim=ylim,title="a) Superficie d'étage")
     ax.axhline(0,color='red',linestyle="--")
     if spot_error is not None:
         ax.axhline(spot_error, color='#2ca02c', linewidth=1, linestyle='--')
@@ -645,10 +705,10 @@ def graph_erreur_vs_aire_plancher(val_data:pd.DataFrame,ax:plt.axes,jitter_bool:
 def graph_erreur_vs_date_constr(val_data:pd.DataFrame,ax:plt.axes,jitter_bool:bool=False,spot_error:int=None):
     if jitter_bool:
         ylim = [-np.max(np.abs(val_data['erreur_bruitee']))*1.25,np.max(np.abs(val_data['erreur_bruitee']))*1.25]
-        val_data.plot(x='premiere_constr',y='erreur_bruitee',xlabel='Date de construction',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$',ax=ax,ylim=ylim,title='b)')
+        val_data.plot(x='premiere_constr',y='erreur_bruitee',xlabel='Année de construction [-]',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$ [pl.]',ax=ax,ylim=ylim,title='a) Temps')
     else:
         ylim = [-np.max(np.abs(val_data['error']))*1.25,np.max(np.abs(val_data['error']))*1.25]
-        val_data.plot(x='premiere_constr',y='error',xlabel='Date de construction',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax,ylim=ylim,title='b)')
+        val_data.plot(x='premiere_constr',y='error',xlabel='Année de construction  [-]',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$ [pl.]',ax=ax,ylim=ylim,title='a) Temps')
     ax.axhline(0,color='red',linestyle="--")
     if spot_error is not None:
         ax.axhline(spot_error, color='#2ca02c', linewidth=1, linestyle='--')
@@ -657,10 +717,10 @@ def graph_erreur_vs_date_constr(val_data:pd.DataFrame,ax:plt.axes,jitter_bool:bo
 def graph_erreur_vs_distance_parlement(val_data:pd.DataFrame,ax:plt.axes,jitter_bool:bool=False,spot_error:int=None):
     if jitter_bool:
         ylim = [-np.max(np.abs(val_data['erreur_bruitee']))*1.25,np.max(np.abs(val_data['erreur_bruitee']))*1.25]
-        val_data.plot(x='dist_to_parliament',y='erreur_bruitee',xlabel='Distance Parlement',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$',ax=ax,ylim=ylim,title='c)')
+        val_data.plot(x='dist_to_parliament',y='erreur_bruitee',xlabel='Distance Parlement [m]',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$ [pl.]',ax=ax,ylim=ylim,title='b) Espace')
     else:
         ylim = [-np.max(np.abs(val_data['error']))*1.25,np.max(np.abs(val_data['error']))*1.25]
-        val_data.plot(x='dist_to_parliament',y='error',xlabel='Distance Parlement',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax,ylim=ylim,title='c)')
+        val_data.plot(x='dist_to_parliament',y='error',xlabel='Distance Parlement [m]',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$ [pl.]',ax=ax,ylim=ylim,title='b) Espace')
     ax.axhline(0,color='red',linestyle="--")
     if spot_error is not None:
         ax.axhline(spot_error, color='#2ca02c', linewidth=1, linestyle='--')
@@ -669,37 +729,43 @@ def graph_erreur_vs_distance_parlement(val_data:pd.DataFrame,ax:plt.axes,jitter_
 def graph_erreur_vs_superf_lot(val_data:pd.DataFrame,ax:plt.axes,jitter_bool:bool=False,spot_error:int=None):
     if jitter_bool:
         ylim = [-np.max(np.abs(val_data['erreur_bruitee']))*1.25,np.max(np.abs(val_data['erreur_bruitee']))*1.25]
-        val_data.plot(x='superf_lot',y='erreur_bruitee',xlabel='Superficie Lot',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$',ax=ax,ylim=ylim,title="f)")
+        val_data.plot(x='superf_lot',y='erreur_bruitee',xlabel='Superficie Lot [$m^2$]',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$ [pl.]',ax=ax,ylim=ylim,title="a) Superficie lot vs erreur")
     else:
         ylim = [-np.max(np.abs(val_data['error']))*1.25,np.max(np.abs(val_data['error']))*1.25]
-        val_data.plot(x='superf_lot',y='error',xlabel='Superficie Lot',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax,ylim=ylim,title='f)')
+        val_data.plot(x='superf_lot',y='error',xlabel='Superficie Lot [$m^2$]',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$ [pl.]',ax=ax,ylim=ylim,title='a) Superficie lot vs erreur')
     ax.axhline(0,color='red',linestyle="--")
     if spot_error is not None:
         ax.axhline(spot_error, color='#2ca02c', linewidth=1, linestyle='--')
         ax.axhline(-spot_error, color='#2ca02c', linewidth=1, linestyle='-.')
 
-def graph_erreur_vs_n_log(val_data:pd.DataFrame,ax:plt.axes,jitter_bool:bool=False,spot_error:int=None):
-    if jitter_bool:
-        ylim = [-np.max(np.abs(val_data['erreur_bruitee']))*1.25,np.max(np.abs(val_data['erreur_bruitee']))*1.25]
-        val_data.plot(x='n_logements_tot',y='erreur_bruitee',xlabel='Nombre de logements',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$',ax=ax,ylim=ylim)
-    else:
-        ylim = [-np.max(np.abs(val_data['error']))*1.25,np.max(np.abs(val_data['error']))*1.25]
-        val_data.plot(x='n_logements_tot',y='error',xlabel='Nombre de logements',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax,ylim=ylim)
+def graph_erreur_vs_n_log(val_data:pd.DataFrame,ax:plt.axes,fig:plt.figure, jitter_bool:bool=False,spot_error:int=None):
     n_tot = len(val_data)
     n_non_null = int(val_data.loc[~val_data['n_logements_tot'].isna()].count().values[0])
-    ax.set_title(f'g) $n_{{avec-log}}$ = {n_non_null}')
-    ax.axhline(0,color='red',linestyle="--")
-    if spot_error is not None:
-        ax.axhline(spot_error, color='#2ca02c', linewidth=1, linestyle='--')
-        ax.axhline(-spot_error, color='#2ca02c', linewidth=1, linestyle='-.')
+    if n_non_null==0:
+        ax.axis('off')
+        fig.text(0.65,0.5,'Aucune propriété avec logements')
+    else:
+        if jitter_bool:
+            ylim = [-np.max(np.abs(val_data['erreur_bruitee']))*1.25,np.max(np.abs(val_data['erreur_bruitee']))*1.25]
+            val_data.plot(x='n_logements_tot',y='erreur_bruitee',xlabel='Nombre de logements [-]',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$ [pl.]',ax=ax,ylim=ylim)
+        else:
+            ylim = [-np.max(np.abs(val_data['error']))*1.25,np.max(np.abs(val_data['error']))*1.25]
+            val_data.plot(x='n_logements_tot',y='error',xlabel='Nombre de logements [-]',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$ [pl.]',ax=ax,ylim=ylim)
+        
+        ax.set_title(f'b) Propriétés avec logements $n_{{avec-log}}$ = {n_non_null}')
+        ax.axhline(0,color='red',linestyle="--")
+        
+        if spot_error is not None:
+            ax.axhline(spot_error, color='#2ca02c', linewidth=1, linestyle='--')
+            ax.axhline(-spot_error, color='#2ca02c', linewidth=1, linestyle='-.')
 
 def graph_erreur_vs_val_role(val_data:pd.DataFrame,ax:plt.axes,jitter_bool:bool=False,spot_error:int=None):
     if jitter_bool:
         ylim = [-np.max(np.abs(val_data['erreur_bruitee']))*1.25,np.max(np.abs(val_data['erreur_bruitee']))*1.25]
-        val_data.plot(x='valeur_totale',y='erreur_bruitee',xlabel='Valeur au rôle',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$',ax=ax,ylim=ylim,title='h)')
+        val_data.plot(x='valeur_totale',y='erreur_bruitee',xlabel='Valeur au rôle [\$]',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$ [pl.]',ax=ax,ylim=ylim,title='b) Valeur au rôle vs erreur')
     else:
         ylim = [-np.max(np.abs(val_data['error']))*1.25,np.max(np.abs(val_data['error']))*1.25]
-        val_data.plot(x='valeur_totale',y='error',xlabel='Valeur au rôle',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax,ylim=ylim,title='h)')
+        val_data.plot(x='valeur_totale',y='error',xlabel='Valeur au rôle [\$]',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$ [pl.]',ax=ax,ylim=ylim,title='b) Valeur au rôle vs erreur')
     ax.axhline(0,color='red',linestyle="--")
     if spot_error is not None:
         ax.axhline(spot_error, color='#2ca02c', linewidth=1, linestyle='--')
@@ -708,10 +774,10 @@ def graph_erreur_vs_val_role(val_data:pd.DataFrame,ax:plt.axes,jitter_bool:bool=
 def graph_erreur_vs_y_pred(val_data:pd.DataFrame,ax:plt.axes,jitter_bool:bool=False,spot_error:int=None,perc_error=None):
     if jitter_bool:
         ylim = [-np.max(np.abs(val_data['erreur_bruitee']))*1.25,np.max(np.abs(val_data['erreur_bruitee']))*1.25]
-        val_data.plot(x='y_pred',y='erreur_bruitee',xlabel='Prédiction',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$',ax=ax,ylim=ylim,title='e)')
+        val_data.plot(x='y_pred',y='erreur_bruitee',xlabel='Prédiction [pl.]',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$ [pl.]',ax=ax,ylim=ylim,title='b) Prédit vs erreur')
     else:
         ylim = [-np.max(np.abs(val_data['error']))*1.25,np.max(np.abs(val_data['error']))*1.25]
-        val_data.plot(x='y_pred',y='error',xlabel='Prédiction',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax,ylim=ylim,title='e)')
+        val_data.plot(x='y_pred',y='error',xlabel='Prédiction [pl.]',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$ [pl.]',ax=ax,ylim=ylim,title='b) Prédit vs erreur')
     ax.axhline(0,color='red',linestyle="--", label=f'$e$=0')
     if spot_error is not None:
         ax.axhline(spot_error, color='#2ca02c', linewidth=1, linestyle='--', label=f'+{spot_error:.0f} pl.')
@@ -721,16 +787,17 @@ def graph_erreur_vs_y_pred(val_data:pd.DataFrame,ax:plt.axes,jitter_bool:bool=Fa
         ax.axline((0,0),(x_max,x_max*perc_error),color='#ff7f0e',linestyle='--', label=f'+{(perc_error*100):.0f} \%.')
         ax.axline((0,0),(x_max,-x_max*perc_error),color='#ff7f0e',linestyle='-.', label=f'-{(perc_error*100):.0f} \%.')
     if perc_error is not None or spot_error is not None:
-        ax.legend(loc='center left', bbox_to_anchor=(1,-0.15), frameon=False, fontsize=8)
+        ax.legend(loc='center left', bbox_to_anchor=(1,-0.5), frameon=False, fontsize=8)
+
 def graph_erreur_vs_val_m2(val_data:pd.DataFrame,ax:plt.axes,jitter_bool:bool=False,spot_error:int=None):
     val_data_add = val_data.copy()
     val_data_add['val_m2'] = val_data_add['valeur_totale']/val_data_add['superf_lot']
     if jitter_bool:
         ylim = [-np.max(np.abs(val_data['erreur_bruitee']))*1.25,np.max(np.abs(val_data['erreur_bruitee']))*1.25]
-        val_data_add.plot(x='val_m2',y='erreur_bruitee',xlabel=r'$\frac{\mathrm{\$}}{m^{2}_{\mathrm{lot}}}$',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$',ax=ax,ylim=ylim,title='i)')
+        val_data_add.plot(x='val_m2',y='erreur_bruitee',xlabel = r"Intensité de développement $\left[\frac{\$}{m_{\mathrm{lot}}^{2}}\right]$",kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$ [pl.]',ax=ax,ylim=ylim,title='a) Intensité développement vs erreur')
     else:
         ylim = [-np.max(np.abs(val_data['error']))*1.25,np.max(np.abs(val_data['error']))*1.25]
-        val_data_add.plot(x='val_m2',y='error',xlabel=r'$\frac{\mathrm{\$}}{m^{2}_{\mathrm{lot}}}$',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax,ylim=ylim,title='i)')
+        val_data_add.plot(x='val_m2',y='error',xlabel = r"Intensité de développement $\left[\frac{\$}{m_{\mathrm{lot}}^{2}}\right]$",kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$ [pl.]',ax=ax,ylim=ylim,title='a) Intensité développement vs erreur')
     ax.axhline(0,color='red',linestyle="--")
     if spot_error is not None:
         ax.axhline(spot_error, color='#2ca02c', linewidth=1, linestyle='--')
@@ -741,14 +808,15 @@ def graph_erreur_vs_y_pred_m2_par_val(val_data:pd.DataFrame,ax:plt.axes,jitter_b
     val_data_add['predict'] = val_data_add['y_pred']/val_data_add['valeur_totale']*val_data_add['superf_lot']
     if jitter_bool:
         ylim = [-np.max(np.abs(val_data['erreur_bruitee']))*1.25,np.max(np.abs(val_data['erreur_bruitee']))*1.25]
-        val_data_add.plot(x='predict',y='erreur_bruitee',xlabel=r'$\frac{y_{pred}\times m^{2}_{\mathrm{lot}}}{\mathrm{\$}}$',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$',ax=ax,ylim=ylim,title='j)')
+        val_data_add.plot(x='predict',y='erreur_bruitee',xlabel=r'Intensité de prédiction  $\left[\frac{y_{pred}\times m^{2}_{\mathrm{lot}}}{\mathrm{\$}}\right]$',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$ [pl.]',ax=ax,ylim=ylim,title='b) Intensité prédiction vs erreur')
     else:
         ylim = [-np.max(np.abs(val_data['error']))*1.25,np.max(np.abs(val_data['error']))*1.25]
-        val_data_add.plot(x='predict',y='error',xlabel=r'$\frac{y_{pred}\times m^{2}_{\mathrm{lot}}}{\mathrm{\$}}$',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$',ax=ax,ylim=ylim,title='j)')
+        val_data_add.plot(x='predict',y='error',xlabel=r'Intensité de prédiction  $\left[\frac{y_{pred}\times m^{2}_{\mathrm{lot}}}{\mathrm{\$}}\right]$',kind='scatter',ylabel='$y_{{obs}}-y_{{pred}}$ [pl.]',ax=ax,ylim=ylim,title='b) Intensité prédiction vs erreur')
     ax.axhline(0,color='red',linestyle="--")
     if spot_error is not None:
         ax.axhline(spot_error, color='#2ca02c', linewidth=1, linestyle='--')
         ax.axhline(-spot_error, color='#2ca02c', linewidth=1, linestyle='-.')
+        
 def graph_erreur_vs_unite_atypiques(val_data:pd.DataFrame,ax:plt.axes,jitter_bool:bool=False,spot_error:int=None):
     if jitter_bool:
         ylim = [-np.max(np.abs(val_data['erreur_bruitee'])),np.max(np.abs(val_data['erreur_bruitee']))]
@@ -757,8 +825,8 @@ def graph_erreur_vs_unite_atypiques(val_data:pd.DataFrame,ax:plt.axes,jitter_boo
             column='erreur_bruitee',
             by='atypical_units',
             ax=ax,
-            ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$',
-            xlabel='Unités atypiques?',
+            ylabel='$y_{{obs}}-y_{{pred}}+ \\epsilon$  [pl.]',
+            xlabel='Unités converties?',
             grid=False
         )
     else:
@@ -768,8 +836,8 @@ def graph_erreur_vs_unite_atypiques(val_data:pd.DataFrame,ax:plt.axes,jitter_boo
             column='error',
             by='atypical_units',
             ax=ax,
-            ylabel='$y_{{obs}}-y_{{pred}}$',
-            xlabel='Unités atypiques?',
+            ylabel='$y_{{obs}}-y_{{pred}}$  [pl.]',
+            xlabel='Unités converties?',
             grid=False
         )
     
@@ -780,7 +848,7 @@ def graph_erreur_vs_unite_atypiques(val_data:pd.DataFrame,ax:plt.axes,jitter_boo
 
     # Replace x-tick labels with counts
     ax.set_xticklabels([f"{cat}\n(n={counts[cat]})" for cat in counts.index])
-    ax.set_title("d)")
+    ax.set_title("a) Unité utilisée par règlement")
     ax.axhline(0,color='red',linestyle="--")
     if spot_error is not None:
         ax.axhline(spot_error, color='#2ca02c', linewidth=1, linestyle='--')
